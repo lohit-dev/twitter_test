@@ -1,4 +1,5 @@
 import { HighValueOrder, SwapMetrics } from "../types";
+import { logger } from "./logger";
 
 // ======================================================================
 // NUMBER AND CURRENCY FORMATTERS
@@ -89,8 +90,36 @@ function calculateTimeDifference(createdAt: string): string {
 
 /**
  * Formats swap metrics data into a well-structured tweet
+ * that fits within Twitter's character limit
  */
 export function formatMetricsToTweet(metrics: SwapMetrics): string {
+  const date = new Date().toISOString().split("T")[0];
+
+  // Create a compact, visually appealing format that fits within Twitter's 280 character limit
+  const tweet = [
+    `📊 SWAP SUMMARY (${date})`,
+    "",
+    `📈 Orders: ${formatNumber(metrics.last24HoursSwaps)} in 24h (${formatNumber(metrics.allOrders)} total)`,
+    `💰 Vol: ${formatCurrency(metrics.last24HoursVolume)} (${formatCurrency(metrics.allTimeVolume)} total)`,
+    `🎯 Success: ${formatPercentage(metrics.completionRate)}`,
+    `🔝 Chain: ${formatChainName(metrics.topChain.name)} (${formatNumber(metrics.topChain.count)})`,
+    `📦 Top Asset: ${formatNumber(metrics.topAssetPair.count)} orders`,
+    "",
+    `🌐 #DeFi #CrossChain #Crypto #Garden`,
+    `✨ https://garden.finance`
+  ].join("\n");
+
+  // Log the character count for debugging
+  logger.info(`Tweet character count: ${tweet.length}`);
+
+  return tweet;
+}
+
+/**
+ * Creates a full detailed metrics report for saving to file
+ * when the tweet is too long for Twitter
+ */
+export function formatDetailedMetricsReport(metrics: SwapMetrics): string {
   const date = new Date().toISOString().split("T")[0];
 
   // Build the main summary section
@@ -116,6 +145,7 @@ export function formatMetricsToTweet(metrics: SwapMetrics): string {
       metrics.topAssetPair.count
     )} orders)`,
   ];
+
 
   // Format high-value orders section if any exist
   const highValueSwaps: string[] = [];
