@@ -1,4 +1,4 @@
-import { TwitterApi } from "twitter-api-v2";
+import { EUploadMimeType, TwitterApi } from "twitter-api-v2";
 import fs from "fs";
 import path from "path";
 import { generateMetricsReport } from "./metrics";
@@ -7,6 +7,8 @@ import {
   formatMetricsToTweet,
 } from "../utils/formatters";
 import { logger } from "../utils/logger";
+import { generateMetricsImage } from "../utils/image_generator";
+import { twitterConfig } from "../config/twitter";
 
 // Define types for token data
 interface TokenData {
@@ -42,8 +44,8 @@ const TWEET_LOG_FILE: string = path.join(
 
 // Twitter API initialization
 const twitterClient = new TwitterApi({
-  clientId: "QkpaVDdla3lTWWNpQnZabjNackY6MTpjaQ",
-  clientSecret: "KeIg3LnqNNFqiX17wlOG42wOV7a8zqYr8Y50gB6ERR1m84V1_K",
+  clientId: twitterConfig.clientId,
+  clientSecret: twitterConfig.clientSecret,
 });
 
 // Define callback URL
@@ -167,50 +169,77 @@ export const twitterService = {
 
   // Get Twitter client with valid tokens
   getTwitterClient: async (): Promise<TwitterApi> => {
-    if (!tokenData.refreshToken) {
-      throw new Error("No refresh token available. Please authenticate first.");
-    }
-
-    // Check if the token is expired or about to expire (5 minute buffer)
-    const now = new Date();
-    const expiresAt = tokenData.expiresAt
-      ? new Date(tokenData.expiresAt)
-      : new Date(0);
-    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-
-    if (fiveMinutesFromNow >= expiresAt) {
-      logger.info("Token expired or about to expire, refreshing...");
-      try {
-        const {
-          client: refreshedClient,
-          accessToken,
-          refreshToken: newRefreshToken,
-          expiresIn,
-        } = await twitterClient.refreshOAuth2Token(tokenData.refreshToken);
-
-        // Update tokens
-        tokenData.accessToken = accessToken;
-        tokenData.refreshToken = newRefreshToken;
-        tokenData.expiresAt = new Date(
-          now.getTime() + expiresIn * 1000
-        ).toISOString();
-        saveTokenData();
-
-        return refreshedClient;
-      } catch (error) {
-        logger.error("Error refreshing token:", error);
-        tokenData.authenticated = false;
-        saveTokenData();
-        throw new Error("Failed to refresh token. Please re-authenticate.");
+    try {
+      // Check if we have OAuth 1.0a credentials in the config
+      if (
+        twitterConfig.apiKey &&
+        twitterConfig.apiSecret &&
+        twitterConfig.accessToken &&
+        twitterConfig.accessSecret
+      ) {
+        // Use OAuth 1.0a authentication for access to both v1 and v2 APIs
+        logger.info("Using OAuth 1.0a authentication for Twitter API");
+        return new TwitterApi({
+          appKey: twitterConfig.apiKey,
+          appSecret: twitterConfig.apiSecret,
+          accessToken: twitterConfig.accessToken,
+          accessSecret: twitterConfig.accessSecret,
+        });
       }
-    } else {
-      // Token is still valid
-      if (!tokenData.accessToken) {
+
+      // Fall back to OAuth 2.0 if OAuth 1.0a credentials are not available
+      logger.info("Falling back to OAuth 2.0 authentication");
+
+      if (!tokenData.refreshToken) {
         throw new Error(
-          "No access token available. Please authenticate first."
+          "No refresh token available. Please authenticate first."
         );
       }
-      return new TwitterApi(tokenData.accessToken);
+
+      // Check if the token is expired or about to expire (5 minute buffer)
+      const now = new Date();
+      const expiresAt = tokenData.expiresAt
+        ? new Date(tokenData.expiresAt)
+        : new Date(0);
+      const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+
+      if (fiveMinutesFromNow >= expiresAt) {
+        logger.info("Token expired or about to expire, refreshing...");
+        try {
+          const {
+            client: refreshedClient,
+            accessToken,
+            refreshToken: newRefreshToken,
+            expiresIn,
+          } = await twitterClient.refreshOAuth2Token(tokenData.refreshToken);
+
+          // Update tokens
+          tokenData.accessToken = accessToken;
+          tokenData.refreshToken = newRefreshToken;
+          tokenData.expiresAt = new Date(
+            now.getTime() + expiresIn * 1000
+          ).toISOString();
+          saveTokenData();
+
+          return refreshedClient;
+        } catch (error) {
+          logger.error("Error refreshing token:", error);
+          tokenData.authenticated = false;
+          saveTokenData();
+          throw new Error("Failed to refresh token. Please re-authenticate.");
+        }
+      } else {
+        // Token is still valid
+        if (!tokenData.accessToken) {
+          throw new Error(
+            "No access token available. Please authenticate first."
+          );
+        }
+        return new TwitterApi(tokenData.accessToken);
+      }
+    } catch (error) {
+      logger.error("Error getting Twitter client:", error);
+      throw error;
     }
   },
 
@@ -280,40 +309,45 @@ export const twitterService = {
     try {
       const client = await twitterService.getTwitterClient();
       const tweetText = message || getHelloWorldMessage();
-
       let data;
-
-      // If an image path is provided, upload and attach the image
       if (imagePath && fs.existsSync(imagePath)) {
         logger.info(`Attaching image from path: ${imagePath}`);
 
-        // Read the image file as Buffer
-        const mediaBuffer = fs.readFileSync(imagePath);
+        try {
+          const imageBuffer = fs.readFileSync(imagePath);
+          logger.info(
+            `Image read as buffer, size: ${imageBuffer.length} bytes`
+          );
 
-        // Upload the media using v2 API directly
-        const mediaId = await client.v1.uploadMedia(mediaBuffer, {
-          mimeType: "image/png",
-        });
-        logger.info(`Media uploaded successfully with ID: ${mediaId}`);
+          const mediaId = await client.v1.uploadMedia(imageBuffer, {
+            mimeType: EUploadMimeType.Png,
+            target: "tweet",
+          });
+          logger.info(`Media uploaded successfully with ID: ${mediaId}`);
 
-        // Create tweet with media
-        const response = await client.v2.tweet(tweetText, {
-          media: {
-            media_ids: [mediaId],
-          },
-        });
-        data = response.data;
+          const response = await client.v2.tweet({
+            text: tweetText,
+            media: {
+              media_ids: [mediaId],
+            },
+          });
+
+          data = response.data;
+          logger.info(`Tweet with image posted successfully`);
+        } catch (mediaError) {
+          logger.error("Error uploading media:", mediaError);
+          logger.info("Falling back to text-only tweet");
+          const response = await client.v2.tweet(tweetText);
+          data = response.data;
+        }
       } else {
-        // Regular text-only tweet
         const response = await client.v2.tweet(tweetText);
         data = response.data;
       }
 
       logger.info(`Tweet posted successfully: ${tweetText}`);
 
-      // Log the tweet for record keeping
       addToTweetLog(tweetText, data.id);
-
       return data;
     } catch (error) {
       logger.error("Tweet error:", error);
@@ -333,12 +367,16 @@ export const twitterService = {
       const metrics = await generateMetricsReport();
       const formattedMetrics = formatMetricsToTweet(metrics);
 
-      logger.info(formattedMetrics);
+      // Generate the metrics image
+      logger.info("Generating metrics image...");
+      const imagePath = await generateMetricsImage(metrics);
+      logger.info(`Metrics image generated at: ${imagePath}`);
 
-      logger.info("Posting metrics to Twitter...");
-      const result = await twitterService.postTweet(formattedMetrics);
+      // Post tweet with image
+      logger.info("Posting metrics image to Twitter...");
+      const result = await twitterService.postTweet("image", imagePath);
 
-      logger.info("Metrics successfully posted to Twitter");
+      logger.info("Metrics successfully posted to Twitter with image");
       return result;
     } catch (error) {
       logger.error("Error posting metrics tweet:", error);

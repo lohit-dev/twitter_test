@@ -173,7 +173,7 @@ export function formatPercentage(num: number): string {
 /**
  * Converts chain identifier to a user-friendly display name
  */
-function formatChainName(chain: string): string {
+export function formatChainName(chain: string): string {
   const chainMap: { [key: string]: string } = {
     arbitrum_sepolia: "Arbitrum",
     starknet_sepolia: "StarkNet",
