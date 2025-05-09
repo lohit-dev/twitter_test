@@ -12,15 +12,15 @@ let metricsScheduler: cron.ScheduledTask | null = null;
 // Main function to run the application
 async function main() {
   logger.info("Starting Twitter Metrics Bot...");
-  
+
   // Start the server
   const PORT = process.env.PORT || 3000;
   const app = express();
-  
+
   // Middleware to parse request bodies
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  
+
   // STEP 1 - Auth URL
   app.get("/auth", (req: Request, res: Response) => {
     try {
@@ -31,39 +31,43 @@ async function main() {
       res.status(500).send("Authentication failed");
     }
   });
-  
+
   // STEP 2 - Verify callback code, store access_token
   app.get("/callback", async (req: Request, res: Response) => {
     try {
       const { state, code } = req.query;
-      
+
       if (!state || !code) {
         return res.status(400).send("Missing state or code parameters");
       }
-      
+
       const userData = await twitterService.handleCallback(
         state.toString(),
         code.toString()
       );
-      
+
       // Set up the schedulers after successful authentication
       setupSchedulers();
-      
+
       // Post metrics after a delay to ensure Twitter API is ready
       setTimeout(async () => {
         try {
           logger.info("Posting initial metrics after authentication...");
           const result = await twitterService.postMetricsTweet();
           if (result) {
-            logger.info(`Initial metrics posted successfully with tweet ID: ${result.id}`);
+            logger.info(
+              `Initial metrics posted successfully with tweet ID: ${result.id}`
+            );
           } else {
-            logger.warn("Metrics posting returned null result - check database connection");
+            logger.warn(
+              "Metrics posting returned null result - check database connection"
+            );
           }
         } catch (error) {
           logger.error("Failed to post initial metrics:", error);
         }
       }, 15000); // 15 second delay
-      
+
       res.send(`
         <h1>Authentication Successful!</h1>
         <p>Welcome ${userData.name || userData.username}!</p>
@@ -78,13 +82,13 @@ async function main() {
       res.status(500).send("Callback processing failed: " + error.message);
     }
   });
-  
+
   // Route to manually trigger a tweet
   app.get("/tweet-now", async (req: Request, res: Response) => {
     if (!twitterService.isAuthenticated()) {
       return res.redirect("/");
     }
-    
+
     try {
       await twitterService.postTweet();
       res.send(`
@@ -100,18 +104,16 @@ async function main() {
       `);
     }
   });
-  
+
   // Route to manually post metrics
   app.get("/post-metrics", async (req: Request, res: Response) => {
     if (!twitterService.isAuthenticated()) {
       return res.redirect("/");
     }
-    
+
     try {
-      const metricsImagePath = path.join(__dirname, "..", "assets", "metrics.png");
-      
       // Add a delay to ensure Twitter API is ready
-      await twitterService.postMetricsTweet(metricsImagePath);
+      await twitterService.postMetricsTweet();
       res.send(`
         <h1>Metrics Tweet Sent!</h1>
         <p>Successfully posted metrics to Twitter</p>
@@ -125,17 +127,17 @@ async function main() {
       `);
     }
   });
-  
+
   // Route to check bot status
   app.get("/status", (req: Request, res: Response) => {
     if (!twitterService.isAuthenticated()) {
       return res.redirect("/");
     }
-    
+
     const nextTweetTime = twitterService.calculateNextTweetTime();
     const nextMetricsTime = twitterService.calculateNextMetricsTime();
     const recentTweets = twitterService.getRecentTweets();
-    
+
     res.send(`
       <h1>Twitter Bot Status</h1>
       <p><strong>Status:</strong> ${
@@ -158,7 +160,7 @@ async function main() {
       <p><a href="/post-metrics">Post metrics now</a></p>
     `);
   });
-  
+
   // Home route
   app.get("/", (req: Request, res: Response) => {
     if (twitterService.isAuthenticated()) {
@@ -172,50 +174,57 @@ async function main() {
       `);
     }
   });
-  
+
   // Start the server
   const server = app.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
-    logger.info(`Visit http://localhost:${PORT} to set up your Twitter metrics bot`);
+    logger.info(
+      `Visit http://localhost:${PORT} to set up your Twitter metrics bot`
+    );
   });
-  
+
   // Check if we're already authenticated and set up schedulers if we are
   if (twitterService.isAuthenticated()) {
     logger.info("Found valid authentication, setting up schedulers...");
     setupSchedulers();
-    
+
     // Post metrics on startup if already authenticated
     setTimeout(async () => {
       try {
         logger.info("Posting metrics on startup (already authenticated)...");
         const result = await twitterService.postMetricsTweet();
         if (result) {
-          logger.info(`Startup metrics posted successfully with tweet ID: ${result.id}`);
+          logger.info(
+            `Startup metrics posted successfully with tweet ID: ${result.id}`
+          );
         } else {
-          logger.warn("Metrics posting returned null result - check database connection");
+          logger.warn(
+            "Metrics posting returned null result - check database connection"
+          );
         }
       } catch (error) {
         logger.error("Failed to post startup metrics:", error);
       }
     }, 15000); // 15 second delay
   } else {
-    logger.info("No valid authentication found. Please authenticate through the web interface.");
+    logger.info(
+      "No valid authentication found. Please authenticate through the web interface."
+    );
   }
 }
 
 // Function to set up all schedulers
 function setupSchedulers() {
-  // Clear any existing schedulers to prevent duplicates
   if (tweetScheduler) {
     tweetScheduler.stop();
     logger.info("Stopped existing tweet scheduler");
   }
-  
+
   if (metricsScheduler) {
     metricsScheduler.stop();
     logger.info("Stopped existing metrics scheduler");
   }
-  
+
   // Schedule tweet posting daily at 12:00 PM
   tweetScheduler = cron.schedule("0 12 * * *", async () => {
     logger.info("Running scheduled tweet posting...");
@@ -225,33 +234,23 @@ function setupSchedulers() {
       logger.error("Scheduled tweet posting failed:", error);
     }
   });
-  
+
   // Schedule metrics posting daily at 12:00 PM
   metricsScheduler = cron.schedule("0 12 * * *", async () => {
     logger.info("Running scheduled metrics posting...");
     try {
-      // Use the same metrics image path as the manual route
-      const metricsImagePath = path.join(__dirname, "..", "assets", "metrics.png");
-      
-      // Check if the image exists before trying to use it
-      if (fs.existsSync(metricsImagePath)) {
-        await twitterService.postMetricsTweet(metricsImagePath);
-      } else {
-        logger.warn(`Metrics image not found at ${metricsImagePath}, posting without image`);
-        await twitterService.postMetricsTweet();
-      }
+      await twitterService.postMetricsTweet();
     } catch (error) {
       logger.error("Scheduled metrics posting failed:", error);
     }
   });
-  
+
   logger.info("Tweet and metrics schedulers initialized");
 }
 
 // Handle process termination gracefully
 process.on("SIGINT", () => {
   logger.info("Server shutting down...");
-  // Stop schedulers gracefully
   if (tweetScheduler) tweetScheduler.stop();
   if (metricsScheduler) metricsScheduler.stop();
   process.exit(0);
@@ -259,7 +258,6 @@ process.on("SIGINT", () => {
 
 process.on("SIGTERM", () => {
   logger.info("Server shutting down...");
-  // Stop schedulers gracefully
   if (tweetScheduler) tweetScheduler.stop();
   if (metricsScheduler) metricsScheduler.stop();
   process.exit(0);

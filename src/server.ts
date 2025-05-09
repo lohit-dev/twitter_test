@@ -27,11 +27,11 @@ app.get("/auth", async (req: Request, res: Response) => {
 app.get("/callback", async (req: Request, res: Response) => {
   try {
     const { state, code } = req.query;
-    
+
     if (!state || !code) {
       return res.status(400).send("Missing state or code parameters");
     }
-    
+
     const userData = await twitterService.handleCallback(
       state.toString(),
       code.toString()
@@ -82,14 +82,16 @@ app.get("/status", async (req: Request, res: Response) => {
   }
 
   const status = await twitterService.getStatus();
-  const nextScheduledTime = twitterService.getNextScheduledTime();
+  const nextScheduledTime = twitterService.calculateNextTweetTime();
   const recentTweets = await twitterService.getRecentTweets();
 
   res.send(`
     <h1>Twitter Bot Status</h1>
     <p><strong>Status:</strong> ${isAuthenticated ? "Active" : "Inactive"}</p>
     <p><strong>Next scheduled metrics:</strong> ${nextScheduledTime}</p>
-    <p><strong>Token expires:</strong> ${status.expiresAt ? new Date(status.expiresAt).toLocaleString() : "Unknown"}</p>
+    <p><strong>Token expires:</strong> ${
+      status.expiresAt ? new Date(status.expiresAt).toLocaleString() : "Unknown"
+    }</p>
     <p><strong>Recent tweets:</strong></p>
     <ul>
       ${recentTweets
@@ -130,7 +132,7 @@ export async function startServer() {
       );
       resolve(app);
     });
-    
+
     // Attach server to app for later reference
     (app as any).server = server;
   });

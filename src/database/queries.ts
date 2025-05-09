@@ -330,7 +330,7 @@ export async function getHighValueOrders(
   }
 }
 
-export async function getSwapMetrics(): Promise<SwapMetrics> {
+export async function getSwapMetrics() {
   try {
     const successfulOrdersResult = await getAllSuccessfullOrders();
     const totalSuccessfulOrders = parseInt(
@@ -341,7 +341,6 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
     const last24HoursOrders = await getRecentOrders("24 hours");
     const last24HoursVolume = await getVolumeForIntervalDynamic("24 hours");
     const allTimeVolumeResult = await getTotalVolumeAllTime();
-    const highValueOrders = await getHighValueOrders(18);
 
     // Top chain
     const topChainResult = await db.query(
@@ -438,7 +437,6 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
       topChain,
       topAssetPair,
       completionRate,
-      highValueOrders,
     };
   } catch (error) {
     logger.error("Error calculating swap metrics:", error);

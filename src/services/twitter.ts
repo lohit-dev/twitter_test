@@ -2,7 +2,10 @@ import { TwitterApi } from "twitter-api-v2";
 import fs from "fs";
 import path from "path";
 import { generateMetricsReport } from "./metrics";
-import { formatMetricsToTweet } from "../utils/formatters";
+import {
+  formatHighVolumeOrders,
+  formatMetricsToTweet,
+} from "../utils/formatters";
 import { logger } from "../utils/logger";
 
 // Define types for token data
@@ -30,12 +33,17 @@ interface TweetResponse {
 
 // File paths - use the same paths as in server.ts
 const DATA_FILE: string = path.join(__dirname, "..", "..", "tokens.json");
-const TWEET_LOG_FILE: string = path.join(__dirname, "..", "..", "tweet_log.json");
+const TWEET_LOG_FILE: string = path.join(
+  __dirname,
+  "..",
+  "..",
+  "tweet_log.json"
+);
 
 // Twitter API initialization
 const twitterClient = new TwitterApi({
-  clientId: "Y0xpQ2hyaHVnVmJtRVR5eFhfOWE6MTpjaQ",
-  clientSecret: "gqC7a5K9sanvv-fT6J4fW1L5R82-cL4CUmnr7xXx0Zwxyk2lnN",
+  clientId: "QkpaVDdla3lTWWNpQnZabjNackY6MTpjaQ",
+  clientSecret: "KeIg3LnqNNFqiX17wlOG42wOV7a8zqYr8Y50gB6ERR1m84V1_K",
 });
 
 // Define callback URL
@@ -105,7 +113,16 @@ export const twitterService = {
   getAuthUrl: () => {
     const { url, codeVerifier, state } = twitterClient.generateOAuth2AuthLink(
       callbackURL,
-      { scope: ["tweet.read", "tweet.write", "users.read", "offline.access", "block.read","block.write"] }
+      {
+        scope: [
+          "tweet.read",
+          "tweet.write",
+          "users.read",
+          "offline.access",
+          "block.read",
+          "block.write",
+        ],
+      }
     );
 
     // Store verifier
@@ -256,31 +273,34 @@ export const twitterService = {
   },
 
   // Post a tweet
-  postTweet: async (message?: string, imagePath?: string): Promise<TweetResponse> => {
+  postTweet: async (
+    message?: string,
+    imagePath?: string
+  ): Promise<TweetResponse> => {
     try {
       const client = await twitterService.getTwitterClient();
       const tweetText = message || getHelloWorldMessage();
 
       let data;
-      
+
       // If an image path is provided, upload and attach the image
       if (imagePath && fs.existsSync(imagePath)) {
         logger.info(`Attaching image from path: ${imagePath}`);
-        
+
         // Read the image file as Buffer
         const mediaBuffer = fs.readFileSync(imagePath);
-        
+
         // Upload the media using v2 API directly
         const mediaId = await client.v1.uploadMedia(mediaBuffer, {
-          mimeType: 'image/png'
+          mimeType: "image/png",
         });
         logger.info(`Media uploaded successfully with ID: ${mediaId}`);
-        
+
         // Create tweet with media
         const response = await client.v2.tweet(tweetText, {
-          media: { 
-            media_ids: [mediaId] 
-          }
+          media: {
+            media_ids: [mediaId],
+          },
         });
         data = response.data;
       } else {
@@ -302,7 +322,7 @@ export const twitterService = {
   },
 
   // Post metrics tweet
-  postMetricsTweet: async (imagePath?: string): Promise<TweetResponse | null> => {
+  postMetricsTweet: async (): Promise<TweetResponse | null> => {
     try {
       if (!tokenData.authenticated) {
         logger.info("Not authenticated. Cannot post metrics tweet.");
@@ -313,8 +333,10 @@ export const twitterService = {
       const metrics = await generateMetricsReport();
       const formattedMetrics = formatMetricsToTweet(metrics);
 
+      logger.info(formattedMetrics);
+
       logger.info("Posting metrics to Twitter...");
-      const result = await twitterService.postTweet(formattedMetrics, imagePath);
+      const result = await twitterService.postTweet(formattedMetrics);
 
       logger.info("Metrics successfully posted to Twitter");
       return result;
@@ -325,7 +347,12 @@ export const twitterService = {
       try {
         const metrics = await generateMetricsReport();
         const formattedMetrics = formatMetricsToTweet(metrics);
-        const failedTweetsDir = path.join(__dirname, "..", "..", "failed_tweets");
+        const failedTweetsDir = path.join(
+          __dirname,
+          "..",
+          "..",
+          "failed_tweets"
+        );
 
         if (!fs.existsSync(failedTweetsDir)) {
           fs.mkdirSync(failedTweetsDir, { recursive: true });
@@ -343,5 +370,5 @@ export const twitterService = {
 
       throw error;
     }
-  }
+  },
 };

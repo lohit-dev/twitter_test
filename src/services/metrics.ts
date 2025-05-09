@@ -6,7 +6,7 @@ export async function generateMetricsReport(): Promise<SwapMetrics> {
   try {
     logger.info("Generating metrics report");
     const metrics = await getSwapMetrics();
-    const highValueOrders = await getHighValueOrders(18);
+    const highValueOrders = await getHighValueOrders(20);
 
     return {
       ...metrics,

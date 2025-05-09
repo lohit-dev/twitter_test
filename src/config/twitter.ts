@@ -15,8 +15,8 @@ export const twitterConfig = {
 
 export const getClient = () => {
   const twitterClient = new TwitterApi({
-    clientId: "Y0xpQ2hyaHVnVmJtRVR5eFhfOWE6MTpjaQ",
-    clientSecret: "gqC7a5K9sanvv-fT6J4fW1L5R82-cL4CUmnr7xXx0Zwxyk2lnN",
+    clientId: "QkpaVDdla3lTWWNpQnZabjNackY6MTpjaQ",
+    clientSecret: "KeIg3LnqNNFqiX17wlOG42wOV7a8zqYr8Y50gB6ERR1m84V1_K",
   });
 
   return twitterClient;
