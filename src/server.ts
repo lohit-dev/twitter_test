@@ -34,7 +34,7 @@ app.get("/callback", async (req: Request, res: Response) => {
 
     const userData = await twitterService.handleCallback(
       state.toString(),
-      code.toString()
+      code.toString(),
     );
 
     res.send(`
@@ -99,7 +99,7 @@ app.get("/status", async (req: Request, res: Response) => {
           (tweet) =>
             `<li>${new Date(tweet.timestamp).toLocaleString()}: "${
               tweet.message
-            }"</li>`
+            }"</li>`,
         )
         .join("")}
     </ul>
@@ -128,7 +128,7 @@ export async function startServer() {
     const server = app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
       logger.info(
-        `Visit http://localhost:${PORT} to set up your Twitter metrics bot`
+        `Visit http://localhost:${PORT} to set up your Twitter metrics bot`,
       );
       resolve(app);
     });

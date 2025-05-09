@@ -68,7 +68,7 @@ export async function getVolumeForIntervalDynamic(interval: string) {
         $1 AS period
       FROM successful_orders so;
     `,
-      [interval]
+      [interval],
     );
 
     let totalVolume = 0;
@@ -88,7 +88,7 @@ export async function getVolumeForIntervalDynamic(interval: string) {
     }
 
     logger.info(
-      `Calculated total volume for interval ${interval}: ${totalVolume}`
+      `Calculated total volume for interval ${interval}: ${totalVolume}`,
     );
 
     return {
@@ -107,7 +107,7 @@ export async function getRecentSwaps(interval: string): Promise<number> {
       `SELECT COUNT(*) AS count 
        FROM public.swaps 
        WHERE created_at > NOW() - $1::INTERVAL`,
-      [interval]
+      [interval],
     );
     return parseInt(result.rows[0].count);
   } catch (error) {
@@ -122,7 +122,7 @@ export async function getRecentOrders(interval: string): Promise<number> {
       `SELECT COUNT(*) AS count 
        FROM public.create_orders 
        WHERE created_at > NOW() - $1::INTERVAL`,
-      [interval]
+      [interval],
     );
     return parseInt(result.rows[0].count);
   } catch (error) {
@@ -147,7 +147,7 @@ export async function getSuccessfulOrdersForInterval(interval: string) {
         AND source_swap.created_at >= NOW() - $1::INTERVAL
       )
     `,
-      [interval]
+      [interval],
     );
 
     return parseInt(result.rows[0].successful_orders);
@@ -161,7 +161,7 @@ export async function getAllOrders() {
   try {
     const result = await db.query(
       `SELECT COUNT(*) as count 
-       FROM create_orders`
+       FROM create_orders`,
     );
     return parseInt(result.rows[0].count);
   } catch (error) {
@@ -174,7 +174,7 @@ export async function getTotalVolumeAllTime() {
   try {
     const networkInfo = await getAssetInfo();
     logger.info(
-      "Fetched network configurations for all-time volume calculation"
+      "Fetched network configurations for all-time volume calculation",
     );
 
     const decimalMapping = new Map<string, number>();
@@ -213,7 +213,7 @@ export async function getTotalVolumeAllTime() {
       SELECT
         so.*
       FROM successful_orders so;
-    `
+    `,
     );
 
     let totalVolume = 0;
@@ -244,7 +244,7 @@ export async function getTotalVolumeAllTime() {
 }
 
 export async function getHighValueOrders(
-  minValueUsd: number
+  minValueUsd: number,
 ): Promise<HighValueOrder[]> {
   try {
     const networkInfo = await getAssetInfo();
@@ -289,7 +289,7 @@ export async function getHighValueOrders(
       } else if (networkInfo[row.source_chain]) {
         const assetConfig = networkInfo[row.source_chain].assetConfig.find(
           (asset: AssetConfig) =>
-            asset.tokenAddress.toLowerCase() === row.source_asset.toLowerCase()
+            asset.tokenAddress.toLowerCase() === row.source_asset.toLowerCase(),
         );
         if (assetConfig) {
           sourceDecimals = assetConfig.decimals;
@@ -319,7 +319,7 @@ export async function getHighValueOrders(
             order.source_chain === "bitcoin_testnet" &&
               order.source_asset === "primary"
               ? 8
-              : 18
+              : 18,
           )) *
         Number(order.input_token_price),
       created_at: order.created_at,
@@ -334,7 +334,7 @@ export async function getSwapMetrics() {
   try {
     const successfulOrdersResult = await getAllSuccessfullOrders();
     const totalSuccessfulOrders = parseInt(
-      successfulOrdersResult[0].total_successful_orders
+      successfulOrdersResult[0].total_successful_orders,
     );
 
     const allOrders = await getAllOrders();
@@ -361,7 +361,7 @@ export async function getSwapMetrics() {
         AND co.additional_data->>'input_token_price' IS NOT NULL
        GROUP BY LOWER(co.source_chain)
       ORDER BY count DESC, volume DESC
-       LIMIT 1`
+       LIMIT 1`,
     );
 
     // Get network info for chain name
@@ -396,7 +396,7 @@ export async function getSwapMetrics() {
         AND co.additional_data->>'input_token_price' IS NOT NULL
       GROUP BY LOWER(co.source_chain), LOWER(co.source_asset)
       ORDER BY count DESC, volume DESC
-       LIMIT 1`
+       LIMIT 1`,
     );
 
     // Get asset info for proper name
@@ -407,7 +407,7 @@ export async function getSwapMetrics() {
     if (assetChain && assetAddress && networkInfo[assetChain]) {
       const assetConfig = networkInfo[assetChain].assetConfig.find(
         (asset) =>
-          asset.tokenAddress.toLowerCase() === assetAddress.toLowerCase()
+          asset.tokenAddress.toLowerCase() === assetAddress.toLowerCase(),
       );
       if (assetConfig) {
         assetName = `${assetConfig.symbol} (${assetConfig.name})`;
@@ -422,7 +422,7 @@ export async function getSwapMetrics() {
       : { pair: "unknown", count: 0 };
 
     const totalOrdersResult = await db.query(
-      `SELECT COUNT(*) FROM matched_orders`
+      `SELECT COUNT(*) FROM matched_orders`,
     );
     const totalMatchedOrders = parseInt(totalOrdersResult.rows[0].count);
     const completionRate =

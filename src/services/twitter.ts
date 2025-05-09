@@ -39,7 +39,7 @@ const TWEET_LOG_FILE: string = path.join(
   __dirname,
   "..",
   "..",
-  "tweet_log.json"
+  "tweet_log.json",
 );
 
 // Twitter API initialization
@@ -124,7 +124,7 @@ export const twitterService = {
           "block.read",
           "block.write",
         ],
-      }
+      },
     );
 
     // Store verifier
@@ -158,7 +158,7 @@ export const twitterService = {
     tokenData.accessToken = accessToken;
     tokenData.refreshToken = refreshToken;
     tokenData.expiresAt = new Date(
-      now.getTime() + expiresIn * 1000
+      now.getTime() + expiresIn * 1000,
     ).toISOString();
     tokenData.authenticated = true;
     saveTokenData();
@@ -192,7 +192,7 @@ export const twitterService = {
 
       if (!tokenData.refreshToken) {
         throw new Error(
-          "No refresh token available. Please authenticate first."
+          "No refresh token available. Please authenticate first.",
         );
       }
 
@@ -217,7 +217,7 @@ export const twitterService = {
           tokenData.accessToken = accessToken;
           tokenData.refreshToken = newRefreshToken;
           tokenData.expiresAt = new Date(
-            now.getTime() + expiresIn * 1000
+            now.getTime() + expiresIn * 1000,
           ).toISOString();
           saveTokenData();
 
@@ -232,7 +232,7 @@ export const twitterService = {
         // Token is still valid
         if (!tokenData.accessToken) {
           throw new Error(
-            "No access token available. Please authenticate first."
+            "No access token available. Please authenticate first.",
           );
         }
         return new TwitterApi(tokenData.accessToken);
@@ -304,7 +304,7 @@ export const twitterService = {
   // Post a tweet
   postTweet: async (
     message?: string,
-    imagePath?: string
+    imagePath?: string,
   ): Promise<TweetResponse> => {
     try {
       const client = await twitterService.getTwitterClient();
@@ -316,7 +316,7 @@ export const twitterService = {
         try {
           const imageBuffer = fs.readFileSync(imagePath);
           logger.info(
-            `Image read as buffer, size: ${imageBuffer.length} bytes`
+            `Image read as buffer, size: ${imageBuffer.length} bytes`,
           );
 
           const mediaId = await client.v1.uploadMedia(imageBuffer, {
@@ -389,7 +389,7 @@ export const twitterService = {
           __dirname,
           "..",
           "..",
-          "failed_tweets"
+          "failed_tweets",
         );
 
         if (!fs.existsSync(failedTweetsDir)) {
@@ -398,7 +398,7 @@ export const twitterService = {
 
         const filename = path.join(
           failedTweetsDir,
-          `metrics_${new Date().toISOString().replace(/:/g, "-")}.txt`
+          `metrics_${new Date().toISOString().replace(/:/g, "-")}.txt`,
         );
         fs.writeFileSync(filename, formattedMetrics);
         logger.info(`Metrics saved to file: ${filename}`);

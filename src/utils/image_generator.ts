@@ -26,7 +26,7 @@ const BACKGROUNDS_DIR = path.join(ASSETS_DIR, "backgrounds");
  * @returns Path to the generated image
  */
 export async function generateMetricsImage(
-  metrics: SwapMetrics
+  metrics: SwapMetrics,
 ): Promise<string> {
   try {
     logger.info("Generating metrics image with background and icons...");
@@ -47,7 +47,7 @@ export async function generateMetricsImage(
       } else {
         // Fallback to solid color if image not found
         logger.warn(
-          `Background image not found at ${backgroundPath}, using solid color`
+          `Background image not found at ${backgroundPath}, using solid color`,
         );
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
       }
@@ -68,7 +68,7 @@ export async function generateMetricsImage(
     ctx.fillText(
       `Volume: ${formatCurrency(metrics.allTimeVolume)}`,
       WIDTH / 2,
-      300
+      300,
     );
 
     // 2. Draw Bitcoin icon (PNG)
@@ -85,7 +85,7 @@ export async function generateMetricsImage(
           btcX - iconSize / 2,
           btcY - iconSize / 2,
           iconSize,
-          iconSize
+          iconSize,
         );
         logger.info("Bitcoin PNG icon loaded successfully");
       } else {
@@ -108,7 +108,7 @@ export async function generateMetricsImage(
           starkX - iconSize / 2,
           starkY - iconSize / 2,
           iconSize,
-          iconSize
+          iconSize,
         );
         logger.info("Starknet PNG icon loaded successfully");
       } else {
@@ -137,11 +137,11 @@ export async function generateMetricsImage(
     ctx.moveTo(arrowEndX, starkY);
     ctx.lineTo(
       arrowEndX - arrowHeadSize * Math.cos(angle - Math.PI / 6),
-      starkY - arrowHeadSize * Math.sin(angle - Math.PI / 6)
+      starkY - arrowHeadSize * Math.sin(angle - Math.PI / 6),
     );
     ctx.lineTo(
       arrowEndX - arrowHeadSize * Math.cos(angle + Math.PI / 6),
-      starkY - arrowHeadSize * Math.sin(angle + Math.PI / 6)
+      starkY - arrowHeadSize * Math.sin(angle + Math.PI / 6),
     );
     ctx.closePath();
     ctx.fillStyle = TEXT_COLOR;
@@ -155,7 +155,7 @@ export async function generateMetricsImage(
     ctx.fillText(
       `Success Rate: ${formatPercentage(metrics.completionRate)}`,
       WIDTH / 2,
-      660
+      660,
     );
 
     // Draw website
@@ -173,7 +173,7 @@ export async function generateMetricsImage(
     fs.writeFileSync(outputPath, buffer);
 
     logger.info(
-      `Metrics image with icons generated and saved to ${outputPath}`
+      `Metrics image with icons generated and saved to ${outputPath}`,
     );
     return outputPath;
   } catch (error) {

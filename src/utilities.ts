@@ -10,7 +10,7 @@ import request from "request";
 export function download(
   uri: string,
   filename: string,
-  callback: () => void
+  callback: () => void,
 ): void {
   request.head(uri, function (err, res, body) {
     request(uri).pipe(fs.createWriteStream(filename)).on("close", callback);

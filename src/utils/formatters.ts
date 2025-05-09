@@ -15,14 +15,14 @@ export function formatMetricsToTweet(metrics: SwapMetrics): string {
     `📊 SWAP SUMMARY (${date})`,
     "",
     `📈 Orders: ${formatNumber(
-      metrics.last24HoursSwaps
+      metrics.last24HoursSwaps,
     )} in 24h (${formatNumber(metrics.allOrders)} total)`,
     `💰 Volume: ${formatCurrency(metrics.last24HoursVolume)} (${formatCurrency(
-      metrics.allTimeVolume
+      metrics.allTimeVolume,
     )} total)`,
     `🎯 Success rate: ${formatPercentage(metrics.completionRate)}`,
     `🔝 Chain: ${formatChainName(metrics.topChain.name)} (${formatNumber(
-      metrics.topChain.count
+      metrics.topChain.count,
     )})`,
     `Visit us at 👇`,
     "",
@@ -59,10 +59,10 @@ export function formatDetailedMetrics(metrics: SwapMetrics): string {
     "",
     "🔝 TOP PERFORMERS",
     `   • Most Used Chain: ${formatChainName(
-      metrics.topChain.name
+      metrics.topChain.name,
     )} (${formatNumber(metrics.topChain.count)} orders)`,
     `   • Top Asset Pair: ${metrics.topAssetPair.pair} (${formatNumber(
-      metrics.topAssetPair.count
+      metrics.topAssetPair.count,
     )} orders)`,
     "",
     "🌐 #DeFi #CrossChain #Crypto #Blockchain #Garden",
@@ -90,7 +90,7 @@ export function formatHighVolumeOrders(orders: HighValueOrder[]): string {
       order.destination_chain === "bitcoin_testnet" &&
         order.destination_asset === "primary"
         ? 8
-        : 18
+        : 18,
     );
 
   const delta = order.usd_value - destAmount * (order.output_token_price || 1);
@@ -104,11 +104,11 @@ export function formatHighVolumeOrders(orders: HighValueOrder[]): string {
     `🐳 WHALE ALERT!`,
     `💰 ${formatCurrency(order.usd_value)}`,
     `🔄 ${formatChainName(order.source_chain)} → ${formatChainName(
-      order.destination_chain
+      order.destination_chain,
     )}`,
     `⏱️ Took: ${calculateTimeDifference(order.created_at)}`,
     `${deltaEmoji} Delta: ${formatCurrency(Math.abs(delta))} (${Math.abs(
-      deltaPercent
+      deltaPercent,
     ).toFixed(2)}%)`,
     `🏦 via Garden Bridge`,
     `#DeFi #CrossChain #Crypto #Garden`,

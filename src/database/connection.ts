@@ -19,7 +19,7 @@ export const db = {
       const res = await pool.query(text, params);
       const duration = Date.now() - start;
       logger.debug(
-        `Executed query: ${text} - Duration: ${duration}ms - Rows: ${res.rowCount}`
+        `Executed query: ${text} - Duration: ${duration}ms - Rows: ${res.rowCount}`,
       );
       return res;
     } catch (error) {

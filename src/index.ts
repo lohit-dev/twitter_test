@@ -43,7 +43,7 @@ async function main() {
 
       const userData = await twitterService.handleCallback(
         state.toString(),
-        code.toString()
+        code.toString(),
       );
 
       // Set up the schedulers after successful authentication
@@ -56,11 +56,11 @@ async function main() {
           const result = await twitterService.postMetricsTweet();
           if (result) {
             logger.info(
-              `Initial metrics posted successfully with tweet ID: ${result.id}`
+              `Initial metrics posted successfully with tweet ID: ${result.id}`,
             );
           } else {
             logger.warn(
-              "Metrics posting returned null result - check database connection"
+              "Metrics posting returned null result - check database connection",
             );
           }
         } catch (error) {
@@ -152,7 +152,7 @@ async function main() {
             (tweet) =>
               `<li>${new Date(tweet.timestamp).toLocaleString()}: "${
                 tweet.message
-              }"</li>`
+              }"</li>`,
           )
           .join("")}
       </ul>
@@ -179,7 +179,7 @@ async function main() {
   const server = app.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
     logger.info(
-      `Visit http://localhost:${PORT} to set up your Twitter metrics bot`
+      `Visit http://localhost:${PORT} to set up your Twitter metrics bot`,
     );
   });
 
@@ -195,11 +195,11 @@ async function main() {
         const result = await twitterService.postMetricsTweet();
         if (result) {
           logger.info(
-            `Startup metrics posted successfully with tweet ID: ${result.id}`
+            `Startup metrics posted successfully with tweet ID: ${result.id}`,
           );
         } else {
           logger.warn(
-            "Metrics posting returned null result - check database connection"
+            "Metrics posting returned null result - check database connection",
           );
         }
       } catch (error) {
@@ -208,7 +208,7 @@ async function main() {
     }, 15000); // 15 second delay
   } else {
     logger.info(
-      "No valid authentication found. Please authenticate through the web interface."
+      "No valid authentication found. Please authenticate through the web interface.",
     );
   }
 }
