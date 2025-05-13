@@ -1,5 +1,5 @@
 import { db } from "./connection";
-import { SwapMetrics } from "../types";
+import { SuccessfulOrder, SwapMetrics } from "../types";
 import { logger } from "../utils/logger";
 import { AssetConfig, getAssetInfo } from "../services/api";
 import { queries } from "./queries";
@@ -58,6 +58,125 @@ export interface VolumeRow {
   created_at: string; // ISO timestamp
 }
 
+/**
+ * Fetches new successful orders since a given timestamp
+ * @returns Array of successful orders with volume information
+ */
+export async function getOrderMetrics(): Promise<SuccessfulOrder[]> {
+  try {
+    logger.info("Fetching new successful orders");
+
+    // Query to get new successful orders since the start timestamp
+    const newOrdersQuery = `
+      SELECT 
+        mo.create_order_id,
+        s1.amount as source_swap_amount,
+        s2.amount as destination_swap_amount,
+        co.source_chain,
+        co.source_asset,
+        co.destination_chain,
+        co.destination_asset,
+        (co.additional_data->>'input_token_price')::float as input_token_price,
+        (co.additional_data->>'output_token_price')::float as output_token_price,
+        mo.created_at AT TIME ZONE 'UTC' as created_at
+      FROM matched_orders mo
+      INNER JOIN create_orders co ON co.create_id = mo.create_order_id
+      INNER JOIN swaps s1 ON s1.swap_id = mo.source_swap_id
+      INNER JOIN swaps s2 ON s2.swap_id = mo.destination_swap_id
+      WHERE s1.redeem_tx_hash != ''
+        AND s2.redeem_tx_hash != ''
+        AND co.create_id IS NOT NULL
+        AND mo.created_at >= NOW()
+      ORDER BY mo.created_at DESC;
+    `;
+
+    const result = await db.query(newOrdersQuery);
+
+    if (result.rows.length === 0) {
+      logger.info("No new successful orders found");
+      return [];
+    }
+
+    // Get network info for decimals calculation
+    const networkInfo = await getAssetInfo();
+
+    // Calculate volume for each order
+    const ordersWithVolume = await Promise.all(
+      result.rows.map(async (order) => {
+        let volume = 0;
+
+        try {
+          // Get proper decimals for the source asset
+          let source_decimals;
+          try {
+            source_decimals = getDecimals(
+              { chain: order.source_chain, asset: order.source_asset },
+              networkInfo
+            );
+          } catch (error) {
+            // Fallback to 18 decimals if we can't determine the actual decimals
+            logger.warn(
+              `Could not determine decimals for ${order.source_chain}:${order.source_asset}, using default of 18`
+            );
+            source_decimals = 18;
+          }
+
+          // Get proper decimals for the destination asset
+          let destination_decimals;
+          try {
+            destination_decimals = getDecimals(
+              {
+                chain: order.destination_chain,
+                asset: order.destination_asset,
+              },
+              networkInfo
+            );
+          } catch (error) {
+            // Fallback to 18 decimals if we can't determine the actual decimals
+            logger.warn(
+              `Could not determine decimals for ${order.destination_chain}:${order.destination_asset}, using default of 18`
+            );
+            destination_decimals = 18;
+          }
+
+          // For source amount
+          const source_amount =
+            Number(order.source_swap_amount) / Math.pow(10, source_decimals);
+
+          // For destination amount
+          const destination_amount =
+            Number(order.destination_swap_amount) /
+            Math.pow(10, destination_decimals);
+
+          // Total volume for a single order (sum of both sides)
+          volume =
+            source_amount * order.input_token_price +
+            destination_amount * order.output_token_price;
+
+          logger.info(
+            `Order ${order.create_order_id} volume: $${volume.toFixed(2)} (source: $${(source_amount * order.input_token_price).toFixed(2)}, destination: $${(destination_amount * order.output_token_price).toFixed(2)})`
+          );
+        } catch (error) {
+          logger.error(
+            `Error calculating volume for order ${order.create_order_id}: ${error}`
+          );
+        }
+
+        return {
+          ...order,
+          volume,
+          timestamp: new Date().toISOString(),
+        };
+      })
+    );
+
+    return ordersWithVolume;
+  } catch (error) {
+    logger.error("Error fetching order metrics:", error);
+    throw error;
+  }
+}
+
 export async function getSwapMetrics(): Promise<SwapMetrics> {
   try {
     logger.info("Fetching swap metrics using queries from queries.ts");
@@ -82,7 +201,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
     let last24HoursVolume = 0;
 
     for (const order of volumeData) {
-      logger.info(`Order: ${JSON.stringify(order)}`);
+      // logger.info(`Order: ${JSON.stringify(order)}`);
 
       if (order.input_token_price && order.source_swap_amount) {
         try {
@@ -120,7 +239,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
             logger.warn(
               `Skipping destination amount calculation for order ${order.create_order_id}: ${error.message}`
             );
-            // Still add the source amount to volume if we can calculate it
+            // If we can't calculate destination amount, just use source amount
             allTimeVolume += source_amount * order.input_token_price;
           }
         } catch (error: any) {
@@ -131,6 +250,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
       }
     }
 
+    // Calculate 24-hour volume
     for (const order of yesterdayVolumeData) {
       if (order.input_token_price && order.source_swap_amount) {
         try {
@@ -144,6 +264,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
 
           let destination_decimals;
           try {
+            // Check if destination chain and asset are defined
             if (!order.destination_chain || !order.destination_asset) {
               throw new Error(`Missing destination chain or asset information`);
             }
@@ -167,7 +288,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
             logger.warn(
               `Skipping destination amount calculation for order ${order.create_order_id}: ${error.message}`
             );
-            // Still add the source amount to volume if we can calculate it
+            // If we can't calculate destination amount, just use source amount
             last24HoursVolume += source_amount * order.input_token_price;
           }
         } catch (error: any) {
@@ -178,7 +299,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
       }
     }
 
-    // Find top chain
+    // Count orders by chain
     const chainCounts = new Map<string, { count: number; volume: number }>();
     for (const order of volumeData) {
       if (!order.source_chain) continue;
@@ -209,7 +330,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
       }
     }
 
-    // Find the top chain
+    // Find the chain with the most orders
     let topChainEntry: [string, { count: number; volume: number }] | null =
       null;
     for (const entry of chainCounts.entries()) {

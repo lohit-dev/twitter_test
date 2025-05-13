@@ -2,6 +2,8 @@ import { SwapMetrics } from "../types";
 import { generateImage } from "../templates";
 import { logger } from "./logger";
 
+export type TemplateName = "minimal" | "standard";
+
 /**
  * Generates a metrics image based on the provided swap metrics and template
  * @param metrics The metrics data to display in the image
@@ -10,7 +12,7 @@ import { logger } from "./logger";
  */
 export async function generateMetricsImage(
   metrics: SwapMetrics,
-  templateName: string = "minimal"
+  templateName: TemplateName = "minimal"
 ): Promise<string> {
   try {
     logger.info(`Generating metrics image with ${templateName} template...`);

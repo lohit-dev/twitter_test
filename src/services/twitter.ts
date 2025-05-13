@@ -1,8 +1,8 @@
 import { EUploadMimeType, TwitterApi } from "twitter-api-v2";
 import fs from "fs";
-import { generateMetricsReport } from "./metrics";
+import { generateSummaryMetrics } from "./metrics";
 import { logger } from "../utils/logger";
-import { generateMetricsImage } from "../utils/image_generator";
+import { generateMetricsImage, TemplateName } from "../utils/image_generator";
 import { twitterConfig } from "../config/twitter";
 import { TweetResponse } from "../types";
 import {
@@ -214,11 +214,11 @@ export const twitterService = {
   },
 
   postMetricsTweet: async (
-    templateName: string = "standard"
+    templateName: TemplateName = "standard"
   ): Promise<TweetResponse | null> => {
     try {
       logger.info(`Posting metrics tweet with ${templateName} template...`);
-      const metrics = await generateMetricsReport();
+      const metrics = await generateSummaryMetrics();
 
       if (!metrics) {
         logger.warn("No metrics data available");

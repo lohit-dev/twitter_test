@@ -22,6 +22,21 @@ export interface SwapMetrics {
   completionRate: number;
 }
 
+export interface SuccessfulOrder {
+  create_order_id: string;
+  source_chain: string;
+  source_asset: string;
+  destination_chain: string;
+  destination_asset: string;
+  source_swap_amount: string;
+  destination_swap_amount: string;
+  input_token_price: number;
+  output_token_price: number;
+  created_at: string;
+  timestamp: string;
+  volume: number;
+}
+
 // Define types for token data
 export interface TokenData {
   codeVerifier?: string;
