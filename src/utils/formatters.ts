@@ -1,4 +1,4 @@
-import { HighValueOrder, SwapMetrics } from "../types";
+import { SwapMetrics } from "../types";
 import { logger } from "./logger";
 // ======================================================================
 // MAIN FORMATTING FUNCTIONS
@@ -9,21 +9,24 @@ import { logger } from "./logger";
  * that fits within Twitter's character limit
  */
 export function formatMetricsToTweet(metrics: SwapMetrics): string {
-  const date = new Date().toISOString().split("T")[0];
+  const date = new Date().toLocaleDateString();
+
+  const formattedAllOrders = metrics.allOrders.toLocaleString();
+  const formattedLast24HoursSwaps = metrics.last24HoursSwaps.toLocaleString();
+
+  const formattedLast24HoursVolume = formatUSD(metrics.last24HoursVolume);
+  const formattedAllTimeVolume = formatUSD(metrics.allTimeVolume);
+
+  // Format completion rate as percentage
+  const completionRatePercent = (metrics.completionRate * 100).toFixed(1);
 
   const tweet = [
     `📊 SWAP SUMMARY (${date})`,
     "",
-    `📈 Orders: ${formatNumber(
-      metrics.last24HoursSwaps,
-    )} in 24h (${formatNumber(metrics.allOrders)} total)`,
-    `💰 Volume: ${formatCurrency(metrics.last24HoursVolume)} (${formatCurrency(
-      metrics.allTimeVolume,
-    )} total)`,
-    `🎯 Success rate: ${formatPercentage(metrics.completionRate)}`,
-    `🔝 Chain: ${formatChainName(metrics.topChain.name)} (${formatNumber(
-      metrics.topChain.count,
-    )})`,
+    `📈 Orders: ${formattedLast24HoursSwaps} in 24h (${formattedAllOrders} total)`,
+    `💰 Volume: ${formattedLast24HoursVolume} (${formattedAllTimeVolume} total)`,
+    `🎯 Success rate: ${completionRatePercent}%`,
+    `🔝 Chain: ${formatChainName(metrics.topChain.name)} (${formatNumber(metrics.topChain.count)})`,
     `Visit us at 👇`,
     "",
     `🌐 #DeFi #CrossChain #Crypto #Garden`,
@@ -59,10 +62,10 @@ export function formatDetailedMetrics(metrics: SwapMetrics): string {
     "",
     "🔝 TOP PERFORMERS",
     `   • Most Used Chain: ${formatChainName(
-      metrics.topChain.name,
+      metrics.topChain.name
     )} (${formatNumber(metrics.topChain.count)} orders)`,
     `   • Top Asset Pair: ${metrics.topAssetPair.pair} (${formatNumber(
-      metrics.topAssetPair.count,
+      metrics.topAssetPair.count
     )} orders)`,
     "",
     "🌐 #DeFi #CrossChain #Crypto #Blockchain #Garden",
@@ -75,51 +78,51 @@ export function formatDetailedMetrics(metrics: SwapMetrics): string {
  * Formats high-value orders into a tweet-friendly format
  * Focuses on a single high-value order with detailed information
  */
-export function formatHighVolumeOrders(orders: HighValueOrder[]): string {
-  if (!orders || orders.length === 0) {
-    return "No high-value orders to display";
-  }
+// export function formatHighVolumeOrders(orders: HighValueOrder[]): string {
+//   if (!orders || orders.length === 0) {
+//     return "No high-value orders to display";
+//   }
 
-  // Just take the first (highest value) order
-  const order = orders[0];
+//   // Just take the first (highest value) order
+//   const order = orders[0];
 
-  const destAmount =
-    Number(order.destination_amount) /
-    Math.pow(
-      10,
-      order.destination_chain === "bitcoin_testnet" &&
-        order.destination_asset === "primary"
-        ? 8
-        : 18,
-    );
+//   const destAmount =
+//     Number(order.destination_amount) /
+//     Math.pow(
+//       10,
+//       order.destination_chain === "bitcoin_testnet" &&
+//         order.destination_asset === "primary"
+//         ? 8
+//         : 18
+//     );
 
-  const delta = order.usd_value - destAmount * (order.output_token_price || 1);
-  const deltaPercent = (delta / order.usd_value) * 100;
+//   const delta = order.usd_value - destAmount * (order.output_token_price || 1);
+//   const deltaPercent = (delta / order.usd_value) * 100;
 
-  // Determine if delta is positive or negative for emoji
-  const deltaEmoji = delta < 0 ? "🔴" : "🟢";
+//   // Determine if delta is positive or negative for emoji
+//   const deltaEmoji = delta < 0 ? "🔴" : "🟢";
 
-  // Create a compact tweet with more detailed information about a single order
-  const result = [
-    `🐳 WHALE ALERT!`,
-    `💰 ${formatCurrency(order.usd_value)}`,
-    `🔄 ${formatChainName(order.source_chain)} → ${formatChainName(
-      order.destination_chain,
-    )}`,
-    `⏱️ Took: ${calculateTimeDifference(order.created_at)}`,
-    `${deltaEmoji} Delta: ${formatCurrency(Math.abs(delta))} (${Math.abs(
-      deltaPercent,
-    ).toFixed(2)}%)`,
-    `🏦 via Garden Bridge`,
-    `#DeFi #CrossChain #Crypto #Garden`,
-    `✨ https://garden.finance/orders/${order.create_id}`,
-  ].join("\n");
+//   // Create a compact tweet with more detailed information about a single order
+//   const result = [
+//     `🐳 WHALE ALERT!`,
+//     `💰 ${formatCurrency(order.usd_value)}`,
+//     `🔄 ${formatChainName(order.source_chain)} → ${formatChainName(
+//       order.destination_chain
+//     )}`,
+//     `⏱️ Took: ${calculateTimeDifference(order.created_at)}`,
+//     `${deltaEmoji} Delta: ${formatCurrency(Math.abs(delta))} (${Math.abs(
+//       deltaPercent
+//     ).toFixed(2)}%)`,
+//     `🏦 via Garden Bridge`,
+//     `#DeFi #CrossChain #Crypto #Garden`,
+//     `✨ https://garden.finance/orders/${order.create_id}`,
+//   ].join("\n");
 
-  // Log the character count for debugging
-  logger.info(`High volume order tweet character count: ${result.length}`);
+//   // Log the character count for debugging
+//   logger.info(`High volume order tweet character count: ${result.length}`);
 
-  return result;
-}
+//   return result;
+// }
 
 // ======================================================================
 // NUMBER AND CURRENCY FORMATTERS
@@ -202,4 +205,13 @@ function calculateTimeDifference(createdAt: string): string {
     const hours = Math.floor(diffInHours);
     return `${hours} hour${hours === 1 ? "" : "s"}`;
   }
+}
+
+function formatUSD(num: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
 }
