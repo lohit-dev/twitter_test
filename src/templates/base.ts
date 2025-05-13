@@ -1,9 +1,12 @@
-import { SwapMetrics } from "../types";
+import { SuccessfulOrder, SwapMetrics } from "../types";
 
 export interface ImageTemplate {
   name: string;
   description: string;
-  generate(metrics: SwapMetrics): Promise<string>;
+  generate(
+    OrderData?: SuccessfulOrder | null,
+    metrics?: SwapMetrics | null,
+  ): Promise<string>;
 }
 
 export interface TemplateOptions {

@@ -62,10 +62,10 @@ export function formatDetailedMetrics(metrics: SwapMetrics): string {
     "",
     "🔝 TOP PERFORMERS",
     `   • Most Used Chain: ${formatChainName(
-      metrics.topChain.name
+      metrics.topChain.name,
     )} (${formatNumber(metrics.topChain.count)} orders)`,
     `   • Top Asset Pair: ${metrics.topAssetPair.pair} (${formatNumber(
-      metrics.topAssetPair.count
+      metrics.topAssetPair.count,
     )} orders)`,
     "",
     "🌐 #DeFi #CrossChain #Crypto #Blockchain #Garden",

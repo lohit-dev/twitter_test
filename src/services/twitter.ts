@@ -225,7 +225,7 @@ export const twitterService = {
         return null;
       }
 
-      const imagePath = await generateMetricsImage(metrics, templateName);
+      const imagePath = await generateMetricsImage(metrics, null, templateName);
       const tweet = await twitterService.postTweet("", imagePath);
 
       logger.info(`Posted metrics tweet with ID: ${tweet.id}`);

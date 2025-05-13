@@ -3,8 +3,9 @@ import { createCanvas, loadImage } from "canvas";
 import path from "path";
 import fs from "fs";
 import { ImageTemplate, TemplateOptions } from "./base";
-import { formatCurrency } from "../utils/formatters";
+import { formatCurrency, formatChainName } from "../utils/formatters";
 import { logger } from "../utils/logger";
+import { SuccessfulOrder } from "../types";
 
 // Order template for displaying individual successful orders
 export class OrderTemplate implements ImageTemplate {
@@ -23,7 +24,7 @@ export class OrderTemplate implements ImageTemplate {
     };
   }
 
-  async generate(orderData): Promise<string> {
+  async generate(orderData: SuccessfulOrder): Promise<string> {
     try {
       logger.info("Generating order image...");
 
@@ -44,55 +45,67 @@ export class OrderTemplate implements ImageTemplate {
       ctx.fillStyle = textColor;
       ctx.font = "bold 72px Arial, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("NEW SWAP", width / 2, 200);
-
-      // Calculate order volume in USD
-      let sourceVolume = 0;
-      if (orderData.input_token_price && orderData.source_swap_amount) {
-        // Assuming source_swap_amount is in the smallest unit (e.g., wei, satoshi)
-        // For simplicity, using a fixed decimal of 18 here
-        const decimals = 18;
-        const sourceAmount =
-          Number(orderData.source_swap_amount) / Math.pow(10, decimals);
-        sourceVolume = sourceAmount * orderData.input_token_price;
-      }
+      ctx.fillText("HIGH VOLUME SWAP", width / 2, 200);
 
       // Draw order details
       const detailsY = 350;
       const detailsSpacing = 120;
 
       // Volume
-      ctx.font = "bold 48px Arial, sans-serif";
-      ctx.fillText(`${formatCurrency(sourceVolume)}`, width / 2, detailsY);
+      ctx.font = "bold 64px Arial, sans-serif";
+      ctx.fillText(`${formatCurrency(orderData.volume)}`, width / 2, detailsY);
       ctx.font = "32px Arial, sans-serif";
       ctx.fillText("VOLUME", width / 2, detailsY + 50);
 
       // From chain/asset
       ctx.font = "bold 36px Arial, sans-serif";
       ctx.fillText(
-        `FROM: ${orderData.source_chain}`,
+        `FROM: ${formatChainName(orderData.source_chain)}`,
         width / 2,
-        detailsY + detailsSpacing
+        detailsY + detailsSpacing,
       );
+
+      // Handle long asset addresses by truncating
+      const sourceAssetDisplay =
+        orderData.source_asset.length > 20
+          ? `${orderData.source_asset.substring(0, 10)}...${orderData.source_asset.substring(orderData.source_asset.length - 10)}`
+          : orderData.source_asset;
+
       ctx.font = "28px Arial, sans-serif";
       ctx.fillText(
-        `${orderData.source_asset.substring(0, 20)}...`,
+        sourceAssetDisplay,
         width / 2,
-        detailsY + detailsSpacing + 50
+        detailsY + detailsSpacing + 50,
       );
 
       // To chain/asset
       ctx.font = "bold 36px Arial, sans-serif";
       ctx.fillText(
-        `TO: ${orderData.destination_chain}`,
+        `TO: ${formatChainName(orderData.destination_chain)}`,
         width / 2,
-        detailsY + detailsSpacing * 2
+        detailsY + detailsSpacing * 2,
       );
+
+      // Handle long asset addresses by truncating
+      const destAssetDisplay =
+        orderData.destination_asset.length > 20
+          ? `${orderData.destination_asset.substring(0, 10)}...${orderData.destination_asset.substring(orderData.destination_asset.length - 10)}`
+          : orderData.destination_asset;
+
       ctx.font = "28px Arial, sans-serif";
       ctx.fillText(
-        `${orderData.destination_asset.substring(0, 20)}...`,
+        destAssetDisplay,
         width / 2,
-        detailsY + detailsSpacing * 2 + 50
+        detailsY + detailsSpacing * 2 + 50,
+      );
+
+      // Draw timestamp
+      const timestamp = new Date(orderData.created_at).toLocaleString();
+      ctx.font = "24px Arial, sans-serif";
+      ctx.fillText(
+        `Completed: ${timestamp}`,
+        width / 2,
+        detailsY + detailsSpacing * 3 + 20,
       );
 
       // Draw website
@@ -106,7 +119,7 @@ export class OrderTemplate implements ImageTemplate {
       }
       const outputPath = path.join(
         ASSETS_DIR,
-        `order_${orderData.create_order_id.substring(0, 8)}.png`
+        `order_${orderData.create_order_id.substring(0, 8)}.png`,
       );
       const buffer = canvas.toBuffer("image/png");
       fs.writeFileSync(outputPath, buffer);

@@ -13,7 +13,7 @@ import path from "path";
 export function download(
   uri: string,
   filename: string,
-  callback: () => void
+  callback: () => void,
 ): void {
   request.head(uri, function (err, res, body) {
     request(uri).pipe(fs.createWriteStream(filename)).on("close", callback);
@@ -24,7 +24,7 @@ export const DATA_FILE: string = path.join(__dirname, "..", "tokens.json");
 export const TWEET_LOG_FILE: string = path.join(
   __dirname,
   "..",
-  "tweet_log.json"
+  "tweet_log.json",
 );
 
 export const callbackURL: string = "http://localhost:3000/callback";

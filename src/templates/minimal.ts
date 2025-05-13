@@ -24,7 +24,10 @@ export class MinimalTemplate implements ImageTemplate {
     };
   }
 
-  async generate(metrics: SwapMetrics): Promise<string> {
+  async generate(
+    OrderData?: SuccessfulOrder | null,
+    metrics?: SwapMetrics | null,
+  ): Promise<string> {
     try {
       logger.info("Generating metrics image with minimal template...");
 
@@ -55,7 +58,7 @@ export class MinimalTemplate implements ImageTemplate {
       ctx.fillText(
         `${formatCurrency(metrics.allTimeVolume)}`,
         width / 2,
-        metricsY
+        metricsY,
       );
       ctx.font = "32px Arial, sans-serif";
       ctx.fillText("TOTAL VOLUME", width / 2, metricsY + 50);
@@ -64,7 +67,7 @@ export class MinimalTemplate implements ImageTemplate {
       ctx.fillText(
         `${metrics.last24HoursSwaps}`,
         width / 2,
-        metricsY + metricsSpacing
+        metricsY + metricsSpacing,
       );
       ctx.font = "32px Arial, sans-serif";
       ctx.fillText("24H ORDERS", width / 2, metricsY + metricsSpacing + 50);
@@ -73,13 +76,13 @@ export class MinimalTemplate implements ImageTemplate {
       ctx.fillText(
         `${formatPercentage(metrics.completionRate)}`,
         width / 2,
-        metricsY + metricsSpacing * 2
+        metricsY + metricsSpacing * 2,
       );
       ctx.font = "32px Arial, sans-serif";
       ctx.fillText(
         "SUCCESS RATE",
         width / 2,
-        metricsY + metricsSpacing * 2 + 50
+        metricsY + metricsSpacing * 2 + 50,
       );
 
       // Draw website
@@ -93,7 +96,7 @@ export class MinimalTemplate implements ImageTemplate {
       fs.writeFileSync(outputPath, buffer);
 
       logger.info(
-        `Metrics image with ${this.name} template generated: ${outputPath}`
+        `Metrics image with ${this.name} template generated: ${outputPath}`,
       );
       return outputPath;
     } catch (error) {

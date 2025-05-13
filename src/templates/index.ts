@@ -1,11 +1,10 @@
-import { SwapMetrics } from "../types";
+import { SuccessfulOrder, SwapMetrics } from "../types";
+import { TemplateName } from "../utils/image_generator";
 import { ImageTemplate } from "./base";
-import standardTemplate from "./standard";
 import minimalTemplate from "./minimal";
 import orderTemplate from "./order";
 
 const templates: Record<string, ImageTemplate> = {
-  standard: standardTemplate,
   minimal: minimalTemplate,
   order: orderTemplate,
 };
@@ -14,7 +13,7 @@ export function getTemplate(name: string): ImageTemplate {
   const template = templates[name];
   if (!template) {
     throw new Error(
-      `Template '${name}' not found. Available templates: ${Object.keys(templates).join(", ")}`
+      `Template '${name}' not found. Available templates: ${Object.keys(templates).join(", ")}`,
     );
   }
   return template;
@@ -25,11 +24,16 @@ export function listTemplates(): ImageTemplate[] {
 }
 
 export async function generateImage(
-  templateName: string,
-  metrics: SwapMetrics
+  templateName: TemplateName,
+  OrderData?: SuccessfulOrder | null,
+  metrics?: SwapMetrics | null,
 ): Promise<string> {
   const template = getTemplate(templateName);
-  return template.generate(metrics);
+  if (OrderData != null) {
+    return template.generate(OrderData, null);
+  } else {
+    return template.generate(null, metrics);
+  }
 }
 
 export { ImageTemplate };

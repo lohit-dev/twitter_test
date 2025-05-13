@@ -1,8 +1,8 @@
-import { SwapMetrics } from "../types";
+import { SuccessfulOrder, SwapMetrics } from "../types";
 import { generateImage } from "../templates";
 import { logger } from "./logger";
 
-export type TemplateName = "minimal" | "standard";
+export type TemplateName = "minimal" | "standard" | "order";
 
 /**
  * Generates a metrics image based on the provided swap metrics and template
@@ -11,12 +11,17 @@ export type TemplateName = "minimal" | "standard";
  * @returns Path to the generated image
  */
 export async function generateMetricsImage(
-  metrics: SwapMetrics,
-  templateName: TemplateName = "minimal"
+  metrics: SwapMetrics | null,
+  orderData: SuccessfulOrder | null,
+  templateName: TemplateName = "minimal",
 ): Promise<string> {
   try {
     logger.info(`Generating metrics image with ${templateName} template...`);
-    return await generateImage(templateName, metrics);
+    if (orderData != null) {
+      return await generateImage(templateName, orderData, null);
+    } else {
+      return await generateImage(templateName, null, metrics);
+    }
   } catch (error) {
     logger.error("Error generating metrics image:", error);
     throw error;

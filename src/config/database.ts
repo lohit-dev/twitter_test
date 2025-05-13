@@ -8,7 +8,7 @@ export const dbConfig = {
   database: process.env.DB_NAME || "stage_db",
   user: process.env.DB_USER || "postgres",
   password: process.env.DB_PASSWORD || "",
-  max: 50,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 50000,
+  max: 100,
+  idleTimeoutMillis: 100000,
+  connectionTimeoutMillis: 100000,
 };

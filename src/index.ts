@@ -17,7 +17,7 @@ async function main() {
   app.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
     logger.info(
-      `Visit http://localhost:${PORT} to set up your Twitter metrics bot`
+      `Visit http://localhost:${PORT} to set up your Twitter metrics bot`,
     );
   });
 

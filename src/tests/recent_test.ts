@@ -15,20 +15,20 @@ async function extractRecentOrders() {
     const orders = result.rows;
 
     console.log(
-      `Found ${orders.length} successful orders in the last 24 hours`
+      `Found ${orders.length} successful orders in the last 24 hours`,
     );
 
     // Save to file
     const filePath = path.join(
       __dirname,
       "..",
-      "recent_successful_orders.json"
+      "recent_successful_orders.json",
     );
     fs.writeFileSync(filePath, JSON.stringify(orders, null, 2));
 
     console.log(`Successfully saved orders to ${filePath}`);
     console.log(
-      `First few orders: ${JSON.stringify(orders.slice(0, 2), null, 2)}`
+      `First few orders: ${JSON.stringify(orders.slice(0, 2), null, 2)}`,
     );
 
     return orders;
