@@ -33,7 +33,7 @@ const registerSatoshiFont = (): void => {
       if (fs.existsSync(fontPath)) {
         registerFont(fontPath, {
           family: "Satoshi",
-          weight: weight === "regular" ? "normal" : weight,
+          weight: weight,
         });
         logger.info(`Registered Satoshi ${weight} font`);
       } else {
@@ -148,9 +148,14 @@ export class GardenOrderTemplate implements ImageTemplate {
     volume: number
   ): void {
     ctx.fillStyle = "#554B6A";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 0;
     ctx.font = "bold 28px Satoshi";
     ctx.textAlign = "right";
     ctx.fillText(`~$${volume.toFixed(2)}`, 910, 280);
+    ctx.shadowOffsetX = 0;
   }
 
   /**
@@ -169,10 +174,20 @@ export class GardenOrderTemplate implements ImageTemplate {
     }
 
     // Source amount (left side)
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 0;
     ctx.fillText("5.1234", 90, 395);
+    // Reset shadow after drawing
+    ctx.shadowOffsetX = 0;
 
     // Destination amount (right side)
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 0;
     ctx.fillText("5.1234", 570, 395);
+    ctx.shadowOffsetX = 0;
   }
 
   /**
@@ -184,7 +199,7 @@ export class GardenOrderTemplate implements ImageTemplate {
     const sourceIcon = await loadImage(sourceIconPath);
     ctx.drawImage(sourceIcon, 320, 340, 62, 62);
     // Destination source
-    ctx.drawImage(sourceIcon, 790, 340, 62, 62);
+    ctx.drawImage(sourceIcon, 795, 340, 62, 62);
 
     const destinationIconPath = path.join(this.assetsDir, "icons/starknet.png");
     const destiantionIcon = await loadImage(destinationIconPath);
@@ -200,15 +215,25 @@ export class GardenOrderTemplate implements ImageTemplate {
   ): void {
     // Time saved
     ctx.fillStyle = "#5FC29F";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 0;
     ctx.font = "bold 60px Satoshi";
     ctx.textAlign = "left";
     ctx.fillText(timeSaved, 90, 670);
+    ctx.shadowOffsetX = 0;
 
     // Actual time
     ctx.fillStyle = "#444466";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 0;
     ctx.font = "bold 28px Satoshi";
     ctx.textAlign = "right";
     ctx.fillText("10m 24s", 445, 560);
+    ctx.shadowOffsetX = 0;
   }
 
   /**
@@ -220,15 +245,25 @@ export class GardenOrderTemplate implements ImageTemplate {
   ): void {
     // Cost saved
     ctx.fillStyle = "#5FC29F";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 0;
     ctx.font = "bold 60px Satoshi";
     ctx.textAlign = "left";
     ctx.fillText(`$${feeSaved.toLocaleString()}`, 550, 670);
+    ctx.shadowOffsetX = 0;
 
     // Actual cost
     ctx.fillStyle = "#444466";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 0;
     ctx.font = "bold 28px Satoshi";
     ctx.textAlign = "right";
     ctx.fillText("$120.42", 910, 560);
+    ctx.shadowOffsetX = 1;
   }
 
   /**
