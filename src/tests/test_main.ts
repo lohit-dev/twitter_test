@@ -1,31 +1,158 @@
-import { twitterService } from "./services/twitter";
-import { generateSummaryMetrics } from "./services/metrics";
-import { generateMetricsImage } from "./utils/image_generator";
-import { logger } from "./utils/logger";
-import { formatMetricsToTweet } from "./utils/formatters";
-import { db } from "./database/connection";
-import { queries } from "./database/queries";
+import { generateSummaryMetrics } from "../services/metrics";
+import { generateMetricsImage } from "../utils/image_generator";
+import { logger } from "../utils/logger";
+import { formatMetricsToTweet } from "../utils/formatters";
+import { db } from "../database/connection";
 import fs from "fs";
 import path from "path";
-import orderTemplate from "./templates/order";
-import { formatCurrency } from "./utils/formatters";
-import { SuccessfulOrder } from "./types";
-import { getDecimals } from "./database";
-import { getAssetInfo } from "./services/api";
+import orderTemplate from "../templates/order";
+import { formatCurrency } from "../utils/formatters";
+import { SuccessfulOrder } from "../types";
+import { getDecimals } from "../database";
+import { getAssetInfo } from "../services/api";
+import { Asset } from "@gardenfi/orderbook";
+import { getRelayFee } from "../services/timeAndFeeComparison/RelayFees";
+import { getThorFee } from "../services/timeAndFeeComparison/ThorSwapFees";
+import { getChainflipFee } from "../services/timeAndFeeComparison/ChainFlipFees";
+import { comparisonMetric } from "../types";
 
-// Volume threshold in USD
-// - only post if 24h volume exceeds this amount
 const VOLUME_THRESHOLD = 1000;
 const ORDER_VOLUME_THRESHOLD = 100;
 
-// Path for storing successful orders
 const ORDERS_LOG_PATH = path.join(__dirname, "successful_orders.json");
 
-// Set to track order IDs we've already processed
 const processedOrderIds = new Set<string>();
 
-// Timestamp to track orders after this time
 const startTimestamp = new Date().toISOString();
+
+/**
+ * Estimates the time for a transaction based on the input asset's chain
+ * @param chain The chain of the input asset
+ * @returns A string representation of the estimated time and minutes
+ */
+function getTimeEstimates(chain: string): {
+  timeString: string;
+  timeMinutes: number;
+} {
+  if (chain.toLowerCase() === "bitcoin" || chain.toLowerCase() === "btc") {
+    return { timeString: "~10m", timeMinutes: 10 };
+  }
+  // For EVM chains (Ethereum, Arbitrum, etc.)
+  return { timeString: "~30s", timeMinutes: 0.5 };
+}
+
+/**
+ * Calculates the fee saved by comparing Garden's fee with other services
+ * @param sourceAmount The source amount
+ * @param destinationAmount The destination amount
+ * @param inputTokenPrice The price of the input token
+ * @param sourceChain The source chain
+ * @param sourceAsset The source asset
+ * @param destinationChain The destination chain
+ * @param destinationAsset The destination asset
+ * @returns The fee saved and time saved compared to other services
+ */
+async function calculateFeesAndTimeSaved(
+  sourceAmount: number,
+  destinationAmount: number,
+  sourceChain: string,
+  sourceAsset: string,
+  destinationChain: string,
+  destinationAsset: string
+): Promise<{ feeSaved: number; timeSaved: string; timeSavedMinutes: number }> {
+  try {
+    const gardenFeeUsd = sourceAmount - destinationAmount;
+    const gardenTimeEstimate = getTimeEstimates(sourceChain);
+
+    const srcAsset: Asset = {
+      chain: sourceChain,
+      symbol: sourceAsset,
+      decimals: 18, // Default, will be adjusted by the services
+    };
+
+    const destAsset: Asset = {
+      chain: destinationChain,
+      symbol: destinationAsset,
+      decimals: 18, // Default, will be adjusted by the services
+    };
+
+    // Fetch fees and times from other services
+    const sources = {
+      Relay: getRelayFee,
+      Thorswap: getThorFee,
+      Chainflip: getChainflipFee,
+    };
+
+    const results = await Promise.all(
+      Object.entries(sources).map(async ([key, fetchFn]) => {
+        try {
+          const { fee, time } = await fetchFn(
+            srcAsset,
+            destAsset,
+            sourceAmount
+          );
+          return fee === 0 && time === 0 ? null : { key, fee, time };
+        } catch (error) {
+          logger.error(`Error fetching ${key} fee:`, error);
+          return null;
+        }
+      })
+    );
+
+    const filteredResults = results.filter(Boolean) as {
+      key: string;
+      fee: number;
+      time: number;
+    }[];
+
+    if (filteredResults.length === 0) {
+      return {
+        feeSaved: 0,
+        timeSaved: "0s",
+        timeSavedMinutes: 0,
+      };
+    }
+
+    let maxFeeDiff = 0;
+    let maxTimeDiff = 0;
+
+    for (const { fee, time } of filteredResults) {
+      const feeDiff = fee - gardenFeeUsd;
+      const timeDiff = time - gardenTimeEstimate.timeMinutes * 60;
+
+      if (feeDiff > maxFeeDiff) {
+        maxFeeDiff = feeDiff;
+      }
+
+      if (timeDiff > maxTimeDiff) {
+        maxTimeDiff = timeDiff;
+      }
+    }
+
+    // Format the time saved
+    let formattedTimeSaved = "0s";
+    if (maxTimeDiff > 0) {
+      if (maxTimeDiff >= 60) {
+        formattedTimeSaved = `~${Math.floor(maxTimeDiff / 60)}m`;
+      } else {
+        formattedTimeSaved = `~${Math.floor(maxTimeDiff)}s`;
+      }
+    }
+
+    return {
+      feeSaved: maxFeeDiff,
+      timeSaved: formattedTimeSaved,
+      timeSavedMinutes: maxTimeDiff / 60,
+    };
+  } catch (error) {
+    logger.error("Error calculating fees and time saved:", error);
+    return {
+      feeSaved: 0,
+      timeSaved: "0s",
+      timeSavedMinutes: 0,
+    };
+  }
+}
 
 /**
  * Main function to generate metrics image and post it to Twitter
@@ -39,23 +166,21 @@ async function postMetricsIfSignificant() {
     const metrics = await generateSummaryMetrics();
     logger.info("Metrics data:", metrics);
 
-    // Check if volume exceeds threshold
     if (metrics.last24HoursVolume < VOLUME_THRESHOLD) {
       logger.info(
-        `24-hour volume (${metrics.last24HoursVolume} USD) is below threshold (${VOLUME_THRESHOLD} USD). Skipping post.`,
+        `24-hour volume (${metrics.last24HoursVolume} USD) is below threshold (${VOLUME_THRESHOLD} USD). Skipping post.`
       );
       return;
     }
 
     logger.info(
-      `24-hour volume (${metrics.last24HoursVolume} USD) exceeds threshold (${VOLUME_THRESHOLD} USD). Proceeding with post.`,
+      `24-hour volume (${metrics.last24HoursVolume} USD) exceeds threshold (${VOLUME_THRESHOLD} USD). Proceeding with post.`
     );
 
     logger.info("Generating metrics image...");
     const imagePath = await generateMetricsImage(metrics, null, "minimal");
     logger.info(`Metrics image generated at: ${imagePath}`);
 
-    // Create a tweet with the metrics data
     const tweetText = formatMetricsToTweet(metrics);
 
     logger.info("Posting to Twitter...");
@@ -71,7 +196,6 @@ async function postMetricsIfSignificant() {
  */
 async function fetchAndLogNewSuccessfulOrders() {
   try {
-    // Query to get new successful orders since we started the app
     const newOrdersQuery = `
       SELECT 
         mo.create_order_id,
@@ -104,7 +228,7 @@ async function fetchAndLogNewSuccessfulOrders() {
 
     // Filter out orders we've already processed
     const newOrders = result.rows.filter(
-      (order) => !processedOrderIds.has(order.create_order_id),
+      (order) => !processedOrderIds.has(order.create_order_id)
     );
 
     if (newOrders.length === 0) {
@@ -114,23 +238,15 @@ async function fetchAndLogNewSuccessfulOrders() {
 
     logger.info(`Found ${newOrders.length} new successful orders`);
 
-    // Process each new order
     for (const order of newOrders) {
-      // Add to processed set
       processedOrderIds.add(order.create_order_id);
 
-      // Create order object with timestamp
-
-      // Log the order details
       logger.info(`New Successful Order: ${JSON.stringify(order, null, 2)}`);
 
-      // Calculate order volume
       const networkInfo = await getAssetInfo();
 
       let orderVolume = 0;
       try {
-        // For simplicity, using a fixed decimal of 18 here
-        // In a production environment, you would want to get the actual decimals for each asset
         const sourceAmount =
           Number(order.source_swap_amount) /
           Math.pow(
@@ -140,12 +256,12 @@ async function fetchAndLogNewSuccessfulOrders() {
                 chain: order.source_chain,
                 asset: order.source_asset,
               },
-              networkInfo,
-            ),
+              networkInfo
+            )
           );
 
         const destinationAmount =
-          Number(order.source_swap_amount) /
+          Number(order.destination_swap_amount) /
           Math.pow(
             10,
             getDecimals(
@@ -153,40 +269,53 @@ async function fetchAndLogNewSuccessfulOrders() {
                 chain: order.destination_chain,
                 asset: order.destination_asset,
               },
-              networkInfo,
-            ),
+              networkInfo
+            )
           );
 
         orderVolume =
           sourceAmount * order.input_token_price +
           destinationAmount * order.output_token_price;
 
-        logger.info(`Order volume: ${formatCurrency(orderVolume)}`);
+        const { feeSaved, timeSaved, timeSavedMinutes } =
+          await calculateFeesAndTimeSaved(
+            sourceAmount,
+            destinationAmount,
+            order.source_chain,
+            order.source_asset,
+            order.destination_chain,
+            order.destination_asset
+          );
 
-        // Check if order volume exceeds threshold
+        logger.info(`Order volume: ${formatCurrency(orderVolume)}`);
+        logger.info(
+          `Time saved: ${timeSaved}, Fee saved: ${formatCurrency(feeSaved)}`
+        );
+
         if (orderVolume >= ORDER_VOLUME_THRESHOLD) {
           logger.info(
-            `Order volume (${formatCurrency(orderVolume)}) exceeds threshold (${formatCurrency(ORDER_VOLUME_THRESHOLD)}). Generating image and posting to Twitter.`,
+            `Order volume (${formatCurrency(orderVolume)}) exceeds threshold (${formatCurrency(ORDER_VOLUME_THRESHOLD)}). Generating image and posting to Twitter.`
           );
 
           const orderWithVolume: SuccessfulOrder = {
             ...order,
             volume: orderVolume,
+            timeSaved: timeSaved,
+            timeSavedMinutes: timeSavedMinutes,
+            feeSaved: feeSaved,
           };
 
-          logger.info("Order with time: ", orderWithVolume);
+          logger.info("Order with time and fee: ", orderWithVolume);
 
-          // Generate image for the order
           const imagePath = await orderTemplate.generate(orderWithVolume);
 
-          const tweetText = `New high-volume swap: ${formatCurrency(orderVolume)} from ${orderWithVolume.source_chain} to ${orderWithVolume.destination_chain}`;
+          const tweetText = `New high-volume swap: ${formatCurrency(orderVolume)} from ${orderWithVolume.source_chain} to ${orderWithVolume.destination_chain}\nSaved: ${timeSaved} & ${formatCurrency(feeSaved)} compared to other services`;
 
-          // Post to Twitter
           // const result = await twitterService.postTweet(tweetText, imagePath);
           // logger.info(`Tweet posted successfully with ID: ${result.id}`);
         } else {
           logger.info(
-            `Order volume (${formatCurrency(orderVolume)}) is below threshold (${formatCurrency(ORDER_VOLUME_THRESHOLD)}). Skipping post.`,
+            `Order volume (${formatCurrency(orderVolume)}) is below threshold (${formatCurrency(ORDER_VOLUME_THRESHOLD)}). Skipping post.`
           );
         }
       } catch (error) {
@@ -210,7 +339,6 @@ async function fetchAndLogNewSuccessfulOrders() {
         orders = orders.slice(-1000);
       }
 
-      // Write back to file
       fs.writeFileSync(ORDERS_LOG_PATH, JSON.stringify(orders, null, 2));
     }
   } catch (error) {
@@ -231,7 +359,7 @@ function scheduleDaily() {
   setInterval(postMetricsIfSignificant, oneDayMs);
 
   logger.info(
-    `Scheduled metrics posting to run every 24 hours with volume threshold of ${VOLUME_THRESHOLD} USD`,
+    `Scheduled metrics posting to run every 24 hours with volume threshold of ${VOLUME_THRESHOLD} USD`
   );
 }
 
@@ -246,10 +374,9 @@ function scheduleOrderFetching() {
   setInterval(fetchAndLogNewSuccessfulOrders, 10 * 1000);
 
   logger.info(
-    `Scheduled new order fetching to run every 10 seconds (tracking orders since ${startTimestamp})`,
+    `Scheduled new order fetching to run every 10 seconds (tracking orders since ${startTimestamp})`
   );
 }
 
-// Start the schedulers
 scheduleDaily();
 scheduleOrderFetching();

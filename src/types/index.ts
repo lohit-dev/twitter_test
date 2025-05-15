@@ -35,6 +35,9 @@ export interface SuccessfulOrder {
   created_at: string;
   timestamp: string;
   volume: number;
+  timeSaved?: string;
+  timeSavedMinutes?: number;
+  feeSaved?: number;
 }
 
 // Define types for token data

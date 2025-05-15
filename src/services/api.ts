@@ -24,26 +24,26 @@ interface NetworkInfo {
 
 export type HashiraNetworkResponse = Record<string, NetworkInfo>;
 
-export async function getAssetInfo(): Promise<HashiraNetworkResponse> {
+export async function getAssetInfo(
+  url: string
+): Promise<HashiraNetworkResponse> {
   try {
     logger.info("Fetching network and asset information from Hashira API");
-    const response = await axios.get<HashiraNetworkResponse>(
-      "https://testnet.api.hashira.io/info/assets",
-    );
+    const response = await axios.get<HashiraNetworkResponse>(url);
 
     const networks = Object.keys(response.data);
     logger.info(
-      `Successfully received information for ${networks.length} networks: ${networks.join(", ")}`,
+      `Successfully received information for ${networks.length} networks: ${networks.join(", ")}`
     );
 
     // Log asset information for each network
     for (const [network, info] of Object.entries(response.data)) {
       logger.info(
-        `Network ${network} has ${info.assetConfig.length} assets configured`,
+        `Network ${network} has ${info.assetConfig.length} assets configured`
       );
       info.assetConfig.forEach((asset) => {
         logger.debug(
-          `Asset on ${network}: ${asset.symbol} (${asset.name}) with ${asset.decimals} decimals`,
+          `Asset on ${network}: ${asset.symbol} (${asset.name}) with ${asset.decimals} decimals`
         );
       });
     }

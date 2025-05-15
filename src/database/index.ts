@@ -14,7 +14,7 @@ import { formatCurrency } from "../utils/formatters";
  */
 export function getDecimals(
   asset: { chain: string; asset: string },
-  networkInfo: Record<string, any> = {},
+  networkInfo: Record<string, any> = {}
 ): number {
   if (
     asset.asset ===
@@ -31,7 +31,7 @@ export function getDecimals(
     (config: AssetConfig) =>
       config.symbol.toLowerCase() === asset.asset.toLowerCase() ||
       config.tokenAddress.toLowerCase() === asset.asset.toLowerCase() ||
-      config.atomicSwapAddress.toLowerCase() === asset.asset.toLowerCase(),
+      config.atomicSwapAddress.toLowerCase() === asset.asset.toLowerCase()
   );
 
   if (!assetConfig) {
@@ -99,7 +99,9 @@ export async function getOrderMetrics(): Promise<SuccessfulOrder[]> {
     }
 
     // Get network info for decimals calculation
-    const networkInfo = await getAssetInfo();
+    const networkInfo = await getAssetInfo(
+      "https://testnet.api.hashira.io/info/assets"
+    );
 
     // Calculate volume for each order
     const ordersWithVolume = await Promise.all(
@@ -115,8 +117,8 @@ export async function getOrderMetrics(): Promise<SuccessfulOrder[]> {
                   chain: order.source_chain,
                   asset: order.source_asset,
                 },
-                networkInfo,
-              ),
+                networkInfo
+              )
             );
 
           const destinationAmount =
@@ -128,8 +130,8 @@ export async function getOrderMetrics(): Promise<SuccessfulOrder[]> {
                   chain: order.destination_chain,
                   asset: order.destination_asset,
                 },
-                networkInfo,
-              ),
+                networkInfo
+              )
             );
 
           orderVolume =
@@ -139,11 +141,11 @@ export async function getOrderMetrics(): Promise<SuccessfulOrder[]> {
           logger.info(`Order volume: ${formatCurrency(orderVolume)}`);
 
           logger.info(
-            `Order ${order.create_order_id} volume: $${orderVolume.toFixed(2)} (source: $${(order.source_amount * order.input_token_price).toFixed(2)}, destination: $${(order.destination_amount * order.output_token_price).toFixed(2)})`,
+            `Order ${order.create_order_id} volume: $${orderVolume.toFixed(2)} (source: $${(order.source_amount * order.input_token_price).toFixed(2)}, destination: $${(order.destination_amount * order.output_token_price).toFixed(2)})`
           );
         } catch (error) {
           logger.error(
-            `Error calculating volume for order ${order.create_order_id}: ${error}`,
+            `Error calculating volume for order ${order.create_order_id}: ${error}`
           );
         }
 
@@ -152,7 +154,7 @@ export async function getOrderMetrics(): Promise<SuccessfulOrder[]> {
           orderVolume,
           timestamp: new Date().toISOString(),
         };
-      }),
+      })
     );
 
     return ordersWithVolume;
@@ -181,7 +183,9 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
     const usersResult = await db.query(queries.users);
     const totalUsers = parseInt(usersResult.rows[0]?.total_users || "0");
 
-    const networkInfo = await getAssetInfo();
+    const networkInfo = await getAssetInfo(
+      "https://testnet.api.hashira.io/info/assets"
+    );
     let allTimeVolume = 0;
     let last24HoursVolume = 0;
 
@@ -192,7 +196,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
         try {
           let decimals = getDecimals(
             { chain: order.source_chain, asset: order.source_asset },
-            networkInfo,
+            networkInfo
           );
 
           const source_amount =
@@ -205,7 +209,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
                 chain: order.destination_chain,
                 asset: order.destination_asset,
               },
-              networkInfo,
+              networkInfo
             );
 
             const destination_amount =
@@ -217,14 +221,14 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
               destination_amount * order.output_token_price;
           } catch (error: any) {
             logger.warn(
-              `Skipping destination amount calculation for order ${order.create_order_id}: ${error.message}`,
+              `Skipping destination amount calculation for order ${order.create_order_id}: ${error.message}`
             );
             // If we can't calculate destination amount, just use source amount
             allTimeVolume += source_amount * order.input_token_price;
           }
         } catch (error: any) {
           logger.warn(
-            `Skipping order ${order.create_order_id}: ${error.message}`,
+            `Skipping order ${order.create_order_id}: ${error.message}`
           );
         }
       }
@@ -236,7 +240,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
         try {
           let decimals = getDecimals(
             { chain: order.source_chain, asset: order.source_asset },
-            networkInfo,
+            networkInfo
           );
 
           const source_amount =
@@ -254,7 +258,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
                 chain: order.destination_chain,
                 asset: order.destination_asset,
               },
-              networkInfo,
+              networkInfo
             );
 
             const destination_amount =
@@ -266,14 +270,14 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
               destination_amount * order.output_token_price;
           } catch (error: any) {
             logger.warn(
-              `Skipping destination amount calculation for order ${order.create_order_id}: ${error.message}`,
+              `Skipping destination amount calculation for order ${order.create_order_id}: ${error.message}`
             );
             // If we can't calculate destination amount, just use source amount
             last24HoursVolume += source_amount * order.input_token_price;
           }
         } catch (error: any) {
           logger.warn(
-            `Skipping order ${order.create_order_id}: ${error.message}`,
+            `Skipping order ${order.create_order_id}: ${error.message}`
           );
         }
       }
@@ -296,7 +300,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
         try {
           let decimals = getDecimals(
             { chain: order.source_chain, asset: order.source_asset },
-            networkInfo,
+            networkInfo
           );
 
           const amount =
@@ -304,7 +308,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
           chainData.volume += amount * order.input_token_price;
         } catch (error: any) {
           logger.warn(
-            `Skipping order ${order.create_order_id}: ${error.message}`,
+            `Skipping order ${order.create_order_id}: ${error.message}`
           );
         }
       }
@@ -360,7 +364,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
         try {
           let decimals = getDecimals(
             { chain: order.source_chain, asset: order.source_asset },
-            networkInfo,
+            networkInfo
           );
 
           const amount =
@@ -368,7 +372,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
           pairData.volume += amount * order.input_token_price;
         } catch (error: any) {
           logger.warn(
-            `Skipping order ${order.create_order_id}: ${error.message}`,
+            `Skipping order ${order.create_order_id}: ${error.message}`
           );
         }
       }
@@ -400,7 +404,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
     if (assetChain && assetAddress && networkInfo[assetChain]) {
       const assetConfig = networkInfo[assetChain].assetConfig.find(
         (asset) =>
-          asset.tokenAddress.toLowerCase() === assetAddress.toLowerCase(),
+          asset.tokenAddress.toLowerCase() === assetAddress.toLowerCase()
       );
       if (assetConfig) {
         assetName = `${assetConfig.symbol} (${assetConfig.name})`;
@@ -417,7 +421,7 @@ export async function getSwapMetrics(): Promise<SwapMetrics> {
     // Calculate completion rate
     const totalMatchedOrders = parseInt(totalOrdersData?.total_orders || "0");
     const totalSuccessfulOrders = parseInt(
-      totalOrdersData?.fulfilled_orders || "0",
+      totalOrdersData?.fulfilled_orders || "0"
     );
     const completionRate =
       totalMatchedOrders > 0 ? totalSuccessfulOrders / totalMatchedOrders : 0;

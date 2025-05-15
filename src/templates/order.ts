@@ -57,12 +57,25 @@ export class OrderTemplate implements ImageTemplate {
       ctx.font = "32px Arial, sans-serif";
       ctx.fillText("VOLUME", width / 2, detailsY + 50);
 
+      // Fee and Time Saved (new section)
+      if (
+        orderData.feeSaved !== undefined &&
+        orderData.timeSaved !== undefined
+      ) {
+        ctx.font = "bold 36px Arial, sans-serif";
+        ctx.fillText(
+          `SAVED: ${formatCurrency(orderData.feeSaved)} & ${orderData.timeSaved}`,
+          width / 2,
+          detailsY + detailsSpacing * 0.6
+        );
+      }
+
       // From chain/asset
       ctx.font = "bold 36px Arial, sans-serif";
       ctx.fillText(
         `FROM: ${formatChainName(orderData.source_chain)}`,
         width / 2,
-        detailsY + detailsSpacing,
+        detailsY + detailsSpacing
       );
 
       // Handle long asset addresses by truncating
@@ -75,7 +88,7 @@ export class OrderTemplate implements ImageTemplate {
       ctx.fillText(
         sourceAssetDisplay,
         width / 2,
-        detailsY + detailsSpacing + 50,
+        detailsY + detailsSpacing + 50
       );
 
       // To chain/asset
@@ -83,7 +96,7 @@ export class OrderTemplate implements ImageTemplate {
       ctx.fillText(
         `TO: ${formatChainName(orderData.destination_chain)}`,
         width / 2,
-        detailsY + detailsSpacing * 2,
+        detailsY + detailsSpacing * 2
       );
 
       // Handle long asset addresses by truncating
@@ -96,7 +109,7 @@ export class OrderTemplate implements ImageTemplate {
       ctx.fillText(
         destAssetDisplay,
         width / 2,
-        detailsY + detailsSpacing * 2 + 50,
+        detailsY + detailsSpacing * 2 + 50
       );
 
       // Draw timestamp
@@ -105,7 +118,7 @@ export class OrderTemplate implements ImageTemplate {
       ctx.fillText(
         `Completed: ${timestamp}`,
         width / 2,
-        detailsY + detailsSpacing * 3 + 20,
+        detailsY + detailsSpacing * 3 + 20
       );
 
       // Draw website
@@ -119,7 +132,7 @@ export class OrderTemplate implements ImageTemplate {
       }
       const outputPath = path.join(
         ASSETS_DIR,
-        `order_${orderData.create_order_id.substring(0, 8)}.png`,
+        `order_${orderData.create_order_id.substring(0, 8)}.png`
       );
       const buffer = canvas.toBuffer("image/png");
       fs.writeFileSync(outputPath, buffer);

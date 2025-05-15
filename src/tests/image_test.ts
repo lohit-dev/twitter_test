@@ -1,17 +1,14 @@
-import { twitterService } from "../services/twitter";
 import { logger } from "../utils/logger";
 import { formatCurrency } from "../utils/formatters";
-import orderTemplate from "../templates/order";
+import gardenOrderTemplate from "../templates/garden_order";
 import { SuccessfulOrder } from "../types";
-import fs from "fs";
-import path from "path";
 
 /**
- * Test function to generate an order image using the OrderTemplate
+ * Test function to generate a garden order image using the GardenOrderTemplate
  */
-async function testOrderTemplate() {
+async function testGardenOrderTemplate() {
   try {
-    logger.info("Starting Order Template test...");
+    logger.info("Starting Garden Order Template test...");
 
     // Create a mock order with all required fields
     const mockOrder: SuccessfulOrder = {
@@ -27,26 +24,23 @@ async function testOrderTemplate() {
       output_token_price: 103000, // $103,000 per BTC
       created_at: new Date().toISOString(),
       timestamp: new Date().toISOString(),
-      volume: 125.0, // $125 volume
+      volume: 524500.0, // $524,500 volume
+      feeSaved: 1234.31, // Hardcoded fee saved
+      timeSaved: "31m 54s", // Hardcoded time saved
     };
 
     logger.info("Mock order created:", mockOrder);
     logger.info(`Order volume: ${formatCurrency(mockOrder.volume)}`);
 
-    // Generate image using the order template
-    logger.info("Generating order image...");
-    const imagePath = await orderTemplate.generate(mockOrder);
-    logger.info(`Order image generated at: ${imagePath}`);
+    // Generate image using the garden order template
+    logger.info("Generating garden order image...");
+    const imagePath = await gardenOrderTemplate.generate(mockOrder);
+    logger.info(`Garden order image generated at: ${imagePath}`);
 
-    const tweetText = `Test: New high-volume swap: ${formatCurrency(mockOrder.volume)} from ${mockOrder.source_chain} to ${mockOrder.destination_chain}`;
-
-    // const result = await twitterService.postTweet(tweetText, imagePath);
-    // logger.info(`Tweet posted successfully with ID: ${result.id}`);
-
-    logger.info("Order template test completed successfully");
+    logger.info("Garden order template test completed successfully");
     return imagePath;
   } catch (error) {
-    logger.error("Error in order template test:", error);
+    logger.error("Error in garden order template test:", error);
     throw error;
   }
 }
@@ -56,12 +50,12 @@ async function testOrderTemplate() {
  */
 async function main() {
   try {
-    const imagePath = await testOrderTemplate();
+    const imagePath = await testGardenOrderTemplate();
     logger.info(`Test completed. Image saved at: ${imagePath}`);
 
     // Display the path to the image in a more visible way
     console.log("\n==================================================");
-    console.log(`ORDER IMAGE GENERATED AT: ${imagePath}`);
+    console.log(`GARDEN ORDER IMAGE GENERATED AT: ${imagePath}`);
     console.log("==================================================\n");
   } catch (error) {
     logger.error("Test failed:", error);
